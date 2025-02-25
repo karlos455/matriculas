@@ -78,11 +78,11 @@ const handleFileUpload = (event) => {
     });
 
     // Enviar a lista de matrículas para o backend
-    fetch(API_URL + "/import", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ matriculas }),
-    })
+fetch(`${API_URL}/import`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ matriculas }),
+})
     .then(res => res.json())
     .then(data => {
       console.log("Importação concluída:", data);
