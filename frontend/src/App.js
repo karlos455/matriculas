@@ -1,14 +1,24 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { TextField, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemButton, ListItemText, Typography, Box, IconButton } from "@mui/material";
 import { Add, List as ListIcon, Delete } from "@mui/icons-material";
-import { useEffect, useState } from "react";
 
-export default function MatriculaList() {
+const API_URL = "http://localhost:5000/matriculas";
+
+export default function MatriculaSearch() {
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(null);
   const [matriculas, setMatriculas] = useState([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isListOpen, setIsListOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [matriculaToDelete, setMatriculaToDelete] = useState(null);
+  const [newMatricula, setNewMatricula] = useState("");
+  const [newContexto, setNewContexto] = useState("");
 
+  // Buscar os dados da API
   useEffect(() => {
-    console.log("Chamando API do backend..."); // DEBUG
-    fetch("http://localhost:5000/matriculas")
+    console.log("Chamando API do backend...");
+    fetch(API_URL)
       .then((res) => res.json())
       .then((data) => {
         console.log("Dados recebidos do backend:", data);
@@ -17,64 +27,98 @@ export default function MatriculaList() {
       .catch((error) => console.error("Erro ao buscar matrículas:", error));
   }, []);
 
-  return (
-    <div>
-      <h1>Lista de Matrículas</h1>
-      {matriculas.map((m) => (
-        <p key={m.id}>{m.id} - {m.contexto}</p>
-      ))}
-    </div>
-  );
-}
-
-const API_URL = "http://backend:5000/matriculas";
-
-const initialMatriculas = [
-  { id: "72le95", contexto: "bp✅" },
-  { id: "47sz13", contexto: "bp✅ nkesermam" },
-  { id: "Bc31VN", contexto: "care 2✅" },
-  { id: "27rj69", contexto: "2 pvg ✅" },
-  { id: "Ai98uf", contexto: "✅" },
-  { id: "93eg92", contexto: "⛔️ ⛔️" },
-  { id: "92ut69", contexto: "no⛔️" },
-  { id: "36vh20", contexto: "⛔️ go" },
-  { id: "92qr07", contexto: "❔❔" },
-];
-
-export default function MatriculaSearch() {
-  const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState(null);
-  const [matriculas, setMatriculas] = useState(initialMatriculas);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isListOpen, setIsListOpen] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [matriculaToDelete, setMatriculaToDelete] = useState(null);
-  const [newMatricula, setNewMatricula] = useState("");
-  const [newContexto, setNewContexto] = useState("");
-
   const filtered = search && !selected
     ? matriculas.filter((m) => m.id.toLowerCase().includes(search.toLowerCase()))
     : [];
 
-  const addMatricula = () => {
-    if (newMatricula) {
+
+const addMatricula = () => {
+  if (!newMatricula) return;
+
+  fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      id: newMatricula,
+      contexto: newContexto || "",
+    }),
+  })
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error("Erro ao adicionar matrícula");
+      }
+      return res.json();
+    })
+    .then(() => {
+      // Atualiza a lista de matrículas para incluir a nova entrada
       setMatriculas([...matriculas, { id: newMatricula, contexto: newContexto || "" }]);
       setNewMatricula("");
       setNewContexto("");
       setIsDialogOpen(false);
-    }
+    })
+    .catch((error) => console.error("Erro ao adicionar matrícula:", error));
+};
+
+
+const handleFileUpload = (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    const lines = text.split("\n").map(line => line.trim()).filter(line => line);
+
+    const matriculas = lines.map(line => {
+      const id = line.slice(0, 6).trim(); // Matrícula = primeiros 6 caracteres
+      const contexto = line.length > 6 ? line.slice(6).trim() : ""; // O restante é observação
+      return { id, contexto };
+    });
+
+    // Enviar a lista de matrículas para o backend
+    fetch(API_URL + "/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ matriculas }),
+    })
+    .then(res => res.json())
+    .then(data => {
+      console.log("Importação concluída:", data);
+      setMatriculas([...matriculas, ...data.matriculas]); // Atualiza a lista
+    })
+    .catch(error => console.error("Erro ao importar matrículas:", error));
   };
+
+  reader.readAsText(file);
+};
+
+
 
   const confirmDeleteMatricula = (id) => {
     setMatriculaToDelete(id);
     setDeleteConfirmOpen(true);
   };
 
-  const deleteMatricula = () => {
-    setMatriculas(matriculas.filter((m) => m.id !== matriculaToDelete));
-    setDeleteConfirmOpen(false);
-    setMatriculaToDelete(null);
-  };
+const deleteMatricula = () => {
+  if (!matriculaToDelete) return;
+
+  fetch(`${API_URL}/${matriculaToDelete}`, {
+    method: "DELETE",
+  })
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error("Erro ao apagar matrícula");
+      }
+      // Remove do estado apenas se o backend apagou com sucesso
+      setMatriculas(matriculas.filter((m) => m.id !== matriculaToDelete));
+      setDeleteConfirmOpen(false);
+      setMatriculaToDelete(null);
+    })
+    .catch((error) => console.error("Erro ao apagar matrícula:", error));
+};
+
 
   const handleSelect = (matricula) => {
     setSelected(matricula);
@@ -110,6 +154,18 @@ export default function MatriculaSearch() {
         <Button variant="contained" startIcon={<Add />} onClick={() => setIsDialogOpen(true)}>
           Adicionar
         </Button>
+	<input
+  	type="file"
+  	accept=".txt"
+  	onChange={handleFileUpload}
+  	style={{ display: "none" }}
+  	id="file-upload"
+	/>
+	<label htmlFor="file-upload">
+  	<Button variant="contained" component="span">
+    	Importar Lista
+	  </Button>
+	</label>
         <Button variant="contained" color="secondary" startIcon={<ListIcon />} onClick={() => setIsListOpen(true)}>
           Listar Todas
         </Button>

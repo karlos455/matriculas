@@ -2,9 +2,12 @@ require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const pool = require("./db");
-
-
+const app = express();
 const db = require("./db");
+
+app.use(cors());
+app.use(express.json());
+
 
 async function initDB() {
   try {
@@ -23,11 +26,22 @@ async function initDB() {
 initDB();
 
 
+app.delete("/matriculas/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query("DELETE FROM matriculas WHERE id = $1", [id]);
 
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Matrícula não encontrada" });
+    }
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+    res.json({ message: "Matrícula apagada com sucesso" });
+  } catch (error) {
+    console.error("Erro ao apagar matrícula:", error);
+    res.status(500).json({ error: "Erro ao apagar matrícula" });
+  }
+});
+
 
 // 🟢 Obter todas as matrículas
 app.get("/matriculas", async (req, res) => {
@@ -56,13 +70,20 @@ app.post("/matriculas", async (req, res) => {
 app.delete("/matriculas/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query("DELETE FROM matriculas WHERE id = $1", [id]);
-    res.json({ message: "Matrícula apagada!" });
-  } catch (err) {
-    console.error(err.message);
+    const result = await pool.query("DELETE FROM matriculas WHERE id = $1", [id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Matrícula não encontrada" });
+    }
+
+    res.json({ message: "Matrícula apagada com sucesso" });
+  } catch (error) {
+    console.error("Erro ao apagar matrícula:", error);
     res.status(500).json({ error: "Erro ao apagar matrícula" });
   }
 });
+
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
