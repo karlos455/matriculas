@@ -1,6 +1,31 @@
 import React, { useState } from "react";
 import { TextField, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemButton, ListItemText, Typography, Box, IconButton } from "@mui/material";
 import { Add, List as ListIcon, Delete } from "@mui/icons-material";
+import { useEffect, useState } from "react";
+
+export default function MatriculaList() {
+  const [matriculas, setMatriculas] = useState([]);
+
+  useEffect(() => {
+    console.log("Chamando API do backend..."); // DEBUG
+    fetch("http://localhost:5000/matriculas")
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Dados recebidos do backend:", data);
+        setMatriculas(data);
+      })
+      .catch((error) => console.error("Erro ao buscar matrículas:", error));
+  }, []);
+
+  return (
+    <div>
+      <h1>Lista de Matrículas</h1>
+      {matriculas.map((m) => (
+        <p key={m.id}>{m.id} - {m.contexto}</p>
+      ))}
+    </div>
+  );
+}
 
 const API_URL = "http://backend:5000/matriculas";
 

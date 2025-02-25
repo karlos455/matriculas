@@ -3,6 +3,28 @@ const express = require("express");
 const cors = require("cors");
 const pool = require("./db");
 
+
+const db = require("./db");
+
+async function initDB() {
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS matriculas (
+        id TEXT PRIMARY KEY,
+        contexto TEXT
+      );
+    `);
+    console.log("Tabela 'matriculas' verificada/criada com sucesso!");
+  } catch (error) {
+    console.error("Erro ao criar tabela:", error);
+  }
+}
+
+initDB();
+
+
+
+
 const app = express();
 app.use(cors());
 app.use(express.json());
