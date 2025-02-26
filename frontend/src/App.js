@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { TextField, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemButton, ListItemText, Typography, Box, IconButton } from "@mui/material";
 import { Add, List as ListIcon, Delete, FileUpload } from "@mui/icons-material";
 
-const API_URL = "http://serverbox.local:5000/matriculas";
+const API_URL = "http://matriculas.casadocarlos.info/matriculas";
 
 export default function MatriculaSearch() {
   const [search, setSearch] = useState("");
