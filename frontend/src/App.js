@@ -16,25 +16,23 @@ export default function MatriculaSearch() {
   const [newContexto, setNewContexto] = useState("");
 
   // Buscar os dados da API
-  useEffect(() => {
-    fetch(API_URL)
-      .then((res) => res.json())
-      .then((data) => setMatriculas(data))
-      .catch((error) => console.error("Erro ao buscar matrículas:", error));
-  }, []);
+useEffect(() => {
+  console.log("🔄 Buscando matrículas do backend..."); // Log para debug
 
-  const filtered = search && !selected
-    ? matriculas.filter((m) => m.id.toLowerCase().includes(search.toLowerCase()))
-    : [];
+  fetch(API_URL)
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(`Erro na API: ${res.status} ${res.statusText}`);
+      }
+      return res.json();
+    })
+    .then((data) => {
+      console.log("✅ Matrículas recebidas:", data);
+      setMatriculas(data); // Atualiza o estado com os dados do backend
+    })
+    .catch((error) => console.error("❌ Erro ao buscar matrículas:", error));
+}, []);
 
-  const addMatricula = () => {
-    if (newMatricula) {
-      setMatriculas([...matriculas, { id: newMatricula, contexto: newContexto || "" }]);
-      setNewMatricula("");
-      setNewContexto("");
-      setIsDialogOpen(false);
-    }
-  };
 
   const confirmDeleteMatricula = (id) => {
     setMatriculaToDelete(id);
