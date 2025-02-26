@@ -33,7 +33,33 @@ export default function MatriculaSearch() {
       .catch((error) => console.error("❌ Erro ao buscar matrículas:", error));
   }, []);
 
-  // **💡 Aqui está o "filtered" na posição correta!**
+  // Função para adicionar matrícula ao backend
+  const addMatricula = () => {
+    if (!newMatricula) return; // Se o campo matrícula estiver vazio, não faz nada
+
+    const novaMatricula = { id: newMatricula, contexto: newContexto || "" };
+
+    fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(novaMatricula),
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Erro ao adicionar matrícula");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setMatriculas([...matriculas, data]); // Atualiza a lista com o retorno do backend
+        setNewMatricula("");
+        setNewContexto("");
+        setIsDialogOpen(false); // Fecha o modal após adicionar
+      })
+      .catch((error) => console.error("Erro ao adicionar matrícula:", error));
+  };
+
+  // Função para filtrar matrículas durante a pesquisa
   const filtered = search && !selected
     ? matriculas.filter((m) => m.id.toLowerCase().includes(search.toLowerCase()))
     : [];
@@ -94,7 +120,7 @@ export default function MatriculaSearch() {
         <DialogContent>
           <TextField label="Matrícula" fullWidth required value={newMatricula} onChange={(e) => setNewMatricula(e.target.value)} sx={{ mb: 2 }} />
           <TextField label="Observações" fullWidth value={newContexto} onChange={(e) => setNewContexto(e.target.value)} />
-          <Button variant="contained" onClick={() => console.log("Adicionar matrícula ainda não implementado")} sx={{ mt: 2, width: "100%" }}>Salvar</Button>
+          <Button variant="contained" onClick={addMatricula} sx={{ mt: 2, width: "100%" }}>Salvar</Button>
         </DialogContent>
       </Dialog>
 
