@@ -16,44 +16,27 @@ export default function MatriculaSearch() {
   const [newContexto, setNewContexto] = useState("");
 
   // Buscar os dados da API
-useEffect(() => {
-  console.log("🔄 Buscando matrículas do backend..."); // Log para debug
+  useEffect(() => {
+    console.log("🔄 Buscando matrículas do backend...");
 
-  fetch(API_URL)
-    .then((res) => {
-      if (!res.ok) {
-        throw new Error(`Erro na API: ${res.status} ${res.statusText}`);
-      }
-      return res.json();
-    })
-    .then((data) => {
-      console.log("✅ Matrículas recebidas:", data);
-      setMatriculas(data); // Atualiza o estado com os dados do backend
-    })
-    .catch((error) => console.error("❌ Erro ao buscar matrículas:", error));
-}, []);
-
-
-  const confirmDeleteMatricula = (id) => {
-    setMatriculaToDelete(id);
-    setDeleteConfirmOpen(true);
-  };
-
-  const deleteMatricula = () => {
-    fetch(`${API_URL}/${matriculaToDelete}`, { method: "DELETE" })
+    fetch(API_URL)
       .then((res) => {
-        if (!res.ok) throw new Error("Erro ao apagar matrícula");
-        setMatriculas(matriculas.filter((m) => m.id !== matriculaToDelete));
-        setDeleteConfirmOpen(false);
-        setMatriculaToDelete(null);
+        if (!res.ok) {
+          throw new Error(`Erro na API: ${res.status} ${res.statusText}`);
+        }
+        return res.json();
       })
-      .catch((error) => console.error("Erro ao apagar matrícula:", error));
-  };
+      .then((data) => {
+        console.log("✅ Matrículas recebidas:", data);
+        setMatriculas(data);
+      })
+      .catch((error) => console.error("❌ Erro ao buscar matrículas:", error));
+  }, []);
 
-  const handleSelect = (matricula) => {
-    setSelected(matricula);
-    setSearch("");
-  };
+  // **💡 Aqui está o "filtered" na posição correta!**
+  const filtered = search && !selected
+    ? matriculas.filter((m) => m.id.toLowerCase().includes(search.toLowerCase()))
+    : [];
 
   return (
     <Box sx={{ padding: 2, maxWidth: 600, width: "100%", margin: "auto", textAlign: "center" }}>
@@ -77,7 +60,7 @@ useEffect(() => {
         <List sx={{ border: "1px solid #ccc", borderRadius: 2, maxHeight: 200, overflowY: "auto", width: "100%" }}>
           {filtered.map((m) => (
             <ListItem key={m.id} disablePadding>
-              <ListItemButton onClick={() => handleSelect(m)}>
+              <ListItemButton onClick={() => setSelected(m)}>
                 <ListItemText primary={m.id} />
               </ListItemButton>
             </ListItem>
@@ -111,7 +94,7 @@ useEffect(() => {
         <DialogContent>
           <TextField label="Matrícula" fullWidth required value={newMatricula} onChange={(e) => setNewMatricula(e.target.value)} sx={{ mb: 2 }} />
           <TextField label="Observações" fullWidth value={newContexto} onChange={(e) => setNewContexto(e.target.value)} />
-          <Button variant="contained" onClick={addMatricula} sx={{ mt: 2, width: "100%" }}>Salvar</Button>
+          <Button variant="contained" onClick={() => console.log("Adicionar matrícula ainda não implementado")} sx={{ mt: 2, width: "100%" }}>Salvar</Button>
         </DialogContent>
       </Dialog>
 
@@ -123,7 +106,7 @@ useEffect(() => {
             <List>
               {matriculas.map((m) => (
                 <ListItem key={m.id} secondaryAction={
-                  <IconButton edge="end" color="error" onClick={() => confirmDeleteMatricula(m.id)}>
+                  <IconButton edge="end" color="error" onClick={() => console.log("Apagar matrícula ainda não implementado")}>
                     <Delete />
                   </IconButton>
                 }>
@@ -131,17 +114,6 @@ useEffect(() => {
                 </ListItem>
               ))}
             </List>
-          </Box>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog para Confirmar Apagar */}
-      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Queres apagar a matrícula?</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
-            <Button variant="contained" color="error" onClick={deleteMatricula}>Sim</Button>
-            <Button variant="contained" onClick={() => setDeleteConfirmOpen(false)}>Não</Button>
           </Box>
         </DialogContent>
       </Dialog>
