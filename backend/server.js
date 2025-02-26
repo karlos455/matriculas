@@ -80,21 +80,23 @@ app.get("/matriculas", async (req, res) => {
 
 
 // 🟢 Adicionar uma nova matrícula
-app.post("/matriculas/import", async (req, res) => {
+app.post("/matriculas", async (req, res) => {
   try {
-    const { matriculas } = req.body;
-    const values = matriculas.map(({ id, contexto }) => `('${id}', '${contexto}')`).join(",");
+    const { id, contexto } = req.body;
 
-    if (values.length === 0) {
-      return res.status(400).json({ error: "Nenhuma matrícula para importar" });
+    if (!id) {
+      return res.status(400).json({ error: "O campo matrícula é obrigatório" });
     }
 
-    await pool.query(`INSERT INTO matriculas (id, contexto) VALUES ${values} ON CONFLICT (id) DO NOTHING`);
+    const newMatricula = await pool.query(
+      "INSERT INTO matriculas (id, contexto) VALUES ($1, $2) RETURNING *",
+      [id, contexto]
+    );
 
-    res.json({ message: "Importação concluída", matriculas });
-  } catch (error) {
-    console.error("Erro ao importar matrículas:", error);
-    res.status(500).json({ error: "Erro ao importar matrículas" });
+    res.json(newMatricula.rows[0]);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: "Erro ao adicionar matrícula" });
   }
 });
 
