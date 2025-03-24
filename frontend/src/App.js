@@ -316,16 +316,34 @@ function MatriculaSearch({ handleLogout }) {
 
       {/* Campo de Pesquisa */}
       <TextField
-        label="Procurar..."
-        variant="outlined"
-        fullWidth
-        value={search}
-        onChange={(e) => {
-          setSearch(e.target.value.trim());
-          setSelected(null);
-        }}
-        sx={{ mb: 2 }}
-      />
+      label="Procurar..."
+      variant="outlined"
+      fullWidth
+      value={search}
+      onChange={(e) => {
+        setSearch(e.target.value.trim());
+        setSelected(null);
+      }}
+      sx={{
+        mb: 2,
+        borderRadius: 3,
+        backgroundColor: "#f9f9f9",
+        "& .MuiOutlinedInput-root": {
+          borderRadius: 3,
+          "& fieldset": {
+            borderColor: "#ddd",
+          },
+          "&:hover fieldset": {
+            borderColor: "#999",
+          },
+          "&.Mui-focused fieldset": {
+            borderColor: "#1976d2", // cor azul moderna
+            boxShadow: "0 0 0 2px rgba(25, 118, 210, 0.1)",
+          },
+        },
+      }}
+    />
+
 
       {/* Lista de Resultados da Pesquisa */}
       {filtered.length > 0 && (
