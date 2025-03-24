@@ -279,8 +279,16 @@ function MatriculaSearch({ handleLogout }) {
                       <Typography variant="body2" color="text.secondary">{m.contexto}</Typography>
                       {m.data && (
                         <Typography variant="caption" color="text.secondary">
-                          Adicionado em: {new Date(m.data).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}
-                        </Typography>
+                    Adicionado em: {new Date(m.data).toLocaleDateString("pt-PT", {
+                          weekday: "long",
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "2-digit"
+                        })}, às {new Date(m.data).toLocaleTimeString("pt-PT", {
+                          hour: "2-digit",
+                          minute: "2-digit"
+                    })}                      
+                      </Typography>
                       )}
                     </>
                   }
@@ -298,10 +306,16 @@ function MatriculaSearch({ handleLogout }) {
             <Typography variant="h6" fontWeight="bold">{selected.id}</Typography>
             <Typography variant="body1" sx={{ mt: 1 }}>{selected.contexto}</Typography>
             <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-              Adicionado em: {selected.data
-                ? new Date(selected.data).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })
-                : "Data não disponível"}
-            </Typography>
+            Adicionado em: {new Date(selected.data).toLocaleDateString("pt-PT", {
+              weekday: "long",
+              day: "2-digit",
+              month: "2-digit",
+              year: "2-digit"
+            })}, às {new Date(selected.data).toLocaleTimeString("pt-PT", {
+              hour: "2-digit",
+              minute: "2-digit"
+            })}
+          </Typography>
 
             {/* Botões Editar e Apagar */}
             <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2 }}>
