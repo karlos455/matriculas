@@ -250,7 +250,23 @@ function MatriculaSearch({ handleLogout }) {
 
 
   return (
-    <Box sx={{ padding: 2, maxWidth: 600, width: "100%", margin: "auto", textAlign: "center" }}>
+    <Box
+  sx={{
+    px: 2, // padding horizontal
+    py: 4, // padding vertical
+    maxWidth: "100%",
+    width: "100%",
+    maxWidth: 600,
+    mx: "auto", // margin horizontal auto (centra)
+    textAlign: "center",
+    minHeight: "100vh",
+    boxSizing: "border-box",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "flex-start"
+  }}
+>
+
       <Typography variant="h4" gutterBottom fontWeight="bold">Pesquisador</Typography>
       
       {/* Snackbar de sucesso - matricula apagada */}
@@ -363,44 +379,51 @@ function MatriculaSearch({ handleLogout }) {
       </Box>
 
         {/* Dialog Adicionar/Editar Matrícula */}
-            <Dialog
-      open={isDialogOpen}
-      onClose={() => {
-        setIsDialogOpen(false);
-        setNewMatricula("");
-        setNewContexto("");
-        setIsEditing(false);
-      }}
+        <Dialog
+  open={isDialogOpen}
+  onClose={() => {
+    setIsDialogOpen(false);
+    setNewMatricula("");
+    setNewContexto("");
+    setIsEditing(false);
+  }}
+  fullWidth
+  maxWidth="sm"
+  PaperProps={{
+    sx: {
+      mx: 2, 
+      borderRadius: 3,
+    },
+  }}
+>
+  <DialogTitle>{isEditing ? "Editar Matrícula" : "Adicionar Matrícula"}</DialogTitle>
+  <DialogContent>
+    <TextField
+      label="Matrícula"
       fullWidth
-      maxWidth="sm"
+      required
+      value={newMatricula}
+      onChange={(e) => setNewMatricula(e.target.value)}
+      sx={{ mb: 2 }}
+      disabled={isEditing}
+    />
+    <TextField
+      label="Observações"
+      fullWidth
+      value={newContexto}
+      onChange={(e) => setNewContexto(e.target.value)}
+    />
+    <Button
+      variant="contained"
+      onClick={addMatricula}
+      sx={{ mt: 2, width: "100%" }}
+      disabled={loading}
     >
-          <DialogTitle>{isEditing ? "Editar Matrícula" : "Adicionar Matrícula"}</DialogTitle>
-          <DialogContent>
-          <TextField
-              label="Matrícula"
-              fullWidth
-              required
-              value={newMatricula}
-              onChange={(e) => setNewMatricula(e.target.value)}
-              sx={{ mb: 2 }}
-              disabled={isEditing}
-            />
-            <TextField
-              label="Observações"
-              fullWidth
-              value={newContexto}
-              onChange={(e) => setNewContexto(e.target.value)}
-            />
-            <Button
-              variant="contained"
-              onClick={addMatricula}
-              sx={{ mt: 2, width: "100%" }}
-              disabled={loading}
-            >
-              {loading ? "A guardar..." : "Salvar"}
-            </Button>
-          </DialogContent>
-        </Dialog>
+      {loading ? "A guardar..." : "Salvar"}
+    </Button>
+  </DialogContent>
+</Dialog>
+
 
 
       {/* Dialog para Listar Matrículas */}
