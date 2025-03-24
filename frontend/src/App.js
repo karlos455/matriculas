@@ -134,8 +134,11 @@ function MatriculaSearch({ handleLogout }) {
   };
 
   const filtered = search.trim() && !selected
-    ? matriculas.filter((m) => m.id.toLowerCase().includes(search.toLowerCase()))
-    : [];
+  ? matriculas.filter((m) =>
+      m.id.toLowerCase().includes(search.toLowerCase()) ||
+      m.contexto?.toLowerCase().includes(search.toLowerCase())
+    )
+  : [];
 
   // **Buscar todas as matrículas**
   const fetchMatriculas = () => {
@@ -327,14 +330,22 @@ function MatriculaSearch({ handleLogout }) {
       {/* Lista de Resultados da Pesquisa */}
       {filtered.length > 0 && (
         <List sx={{ border: "1px solid #ccc", borderRadius: 2, maxHeight: 200, overflowY: "auto", width: "100%" }}>
-          {filtered.map((m) => (
-            <ListItem key={m.id} disablePadding>
-              <ListItemButton onClick={() => handleSelect(m)}>
-                <ListItemText primary={m.id} />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
+  {filtered.map((m) => (
+    <ListItem key={m.id} disablePadding>
+      <ListItemButton onClick={() => handleSelect(m)}>
+        <ListItemText
+          primary={<Typography fontWeight="bold">{m.id}</Typography>}
+          secondary={
+            <Typography variant="body2" color="text.secondary">
+              {m.contexto}
+            </Typography>
+          }
+        />
+      </ListItemButton>
+    </ListItem>
+  ))}
+</List>
+
       )}
 
       {/* Cartão de Detalhes */}
