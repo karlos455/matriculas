@@ -39,7 +39,8 @@ async function initDB() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS matriculas (
         id TEXT PRIMARY KEY,
-        contexto TEXT
+        contexto TEXT,
+        data TIMESTAMP DEFAULT NOW()
       );
     `);
     console.log("Tabela 'matriculas' verificada/criada com sucesso!");
