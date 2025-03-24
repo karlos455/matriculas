@@ -121,12 +121,6 @@ function MatriculaSearch({ handleLogout }) {
   const [newMatricula, setNewMatricula] = useState("");
   const [newContexto, setNewContexto] = useState("");
   const [alertOpen, setAlertOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editMatricula, setEditMatricula] = useState(null);
-  const [editId, setEditId] = useState("");
-  const [editContexto, setEditContexto] = useState("");
-  const [isEditOpen, setIsEditOpen] = useState(false);
-
 
   const handleSelect = (matricula) => {
     setSelected(matricula);
@@ -144,7 +138,7 @@ function MatriculaSearch({ handleLogout }) {
       .then((data) => {
         setMatriculas(data);
       })
-      .catch((error) => console.error("❌ Erro ao pesquisar matrículas:", error));
+      .catch((error) => console.error("❌ Erro ao buscar matrículas:", error));
   };
 
   useEffect(() => {
@@ -206,38 +200,9 @@ function MatriculaSearch({ handleLogout }) {
       .catch((error) => console.error("❌ Erro ao apagar matrícula:", error));
   };
 
-
-  const openEditDialog = (matricula) => {
-    setEditMatricula(matricula);
-    setEditId(matricula.id);
-    setEditContexto(matricula.contexto);
-    setEditDialogOpen(true);
-  };
-
-  const saveEdit = () => {
-    if (!editId.trim()) return;
-
-    fetch(`${API_URL}/${editMatricula.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: editId, contexto: editContexto })
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Erro ao editar matrícula");
-        return res.json();
-      })
-      .then((updated) => {
-        setMatriculas((prev) => prev.map((m) => (m.id === editMatricula.id ? updated : m)));
-        setEditDialogOpen(false);
-        setEditMatricula(null);
-      })
-      .catch((err) => console.error("❌ Erro ao editar matrícula:", err));
-  };
-
-
   return (
     <Box sx={{ padding: 2, maxWidth: 600, width: "100%", margin: "auto", textAlign: "center" }}>
-      <Typography variant="h4" gutterBottom fontWeight="bold">Search</Typography>
+      <Typography variant="h4" gutterBottom fontWeight="bold">Pesquisador</Typography>
 
       {/* Snackbar para alertar matrícula duplicada */}
       <Snackbar
@@ -268,11 +233,7 @@ function MatriculaSearch({ handleLogout }) {
       {filtered.length > 0 && (
         <List sx={{ border: "1px solid #ccc", borderRadius: 2, maxHeight: 200, overflowY: "auto", width: "100%" }}>
           {filtered.map((m) => (
-            <ListItem key={m.id} disablePadding secondaryAction={
-              <IconButton edge="end" color="primary" onClick={() => openEditDialog(m)}>
-                <Edit />
-              </IconButton>
-            }>
+            <ListItem key={m.id} disablePadding>
               <ListItemButton onClick={() => handleSelect(m)}>
                 <ListItemText primary={m.id} />
               </ListItemButton>
@@ -305,25 +266,25 @@ function MatriculaSearch({ handleLogout }) {
       </Box>
 
       {/* Dialog Adicionar */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Editar Matrícula</DialogTitle>
+      <Dialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Adicionar Matrícula</DialogTitle>
         <DialogContent>
           <TextField
-            label="Nova Matrícula"
+            label="Matrícula"
             fullWidth
-
-            value={editId}
-            onChange={(e) => setEditId(e.target.value)}
+            required
+            value={newMatricula}
+            onChange={(e) => setNewMatricula(e.target.value)}
             sx={{ mb: 2 }}
           />
           <TextField
             label="Observações"
             fullWidth
-            value={editContexto}
-            onChange={(e) => setEditContexto(e.target.value)}
+            value={newContexto}
+            onChange={(e) => setNewContexto(e.target.value)}
           />
-          <Button variant="contained" onClick={saveEdit} sx={{ mt: 2, width: "100%" }}>
-            Guardar
+          <Button variant="contained" onClick={addMatricula} sx={{ mt: 2, width: "100%" }}>
+            Salvar
           </Button>
         </DialogContent>
       </Dialog>
@@ -360,49 +321,6 @@ function MatriculaSearch({ handleLogout }) {
           </Box>
         </DialogContent>
       </Dialog>
-
-          {/* Dialog para Editar */}
-   <Dialog open={isEditOpen} onClose={() => setIsEditOpen(false)} fullWidth maxWidth="sm">
-  <DialogTitle>Editar Matrícula</DialogTitle>
-  <DialogContent>
-    <TextField
-      label="Nova Matrícula"
-      fullWidth
-      value={editMatricula}
-      onChange={(e) => setEditMatricula(e.target.value)}
-      sx={{ mb: 2 }}
-    />
-    <TextField
-      label="Novo Contexto"
-      fullWidth
-      value={editContexto}
-      onChange={(e) => setEditContexto(e.target.value)}
-    />
-    <Button
-      variant="contained"
-      sx={{ mt: 2, width: "100%" }}
-      onClick={() => {
-        fetch(`${API_URL}/${selected.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: editMatricula, contexto: editContexto }),
-        })
-          .then((res) => {
-            if (!res.ok) throw new Error("Erro ao editar matrícula");
-            return res.json();
-          })
-          .then((data) => {
-            fetchMatriculas(); // atualiza a lista
-            setSelected(null);
-            setIsEditOpen(false);
-          })
-          .catch((err) => console.error("❌ Erro ao editar matrícula:", err));
-      }}
-    >
-      Guardar
-    </Button>
-  </DialogContent>
-</Dialog>
 
 
     </Box>
