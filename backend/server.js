@@ -103,9 +103,6 @@ app.delete("/matriculas/:id", async (req, res) => {
 
 app.put("/matriculas/:id", async (req, res) => {
 
-console.log("PUT recebido para:", req.params.id);
-console.log("Body recebido:", req.body);
-
   try {
     const oldId = req.params.id.toLowerCase();
     const { id: newId, contexto } = req.body;
