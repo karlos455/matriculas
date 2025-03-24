@@ -101,6 +101,26 @@ app.post("/matriculas", async (req, res) => {
 });
 
 
+// Atualizar matrícula
+app.put('/matriculas/:id', (req, res) => {
+  const { contexto } = req.body;
+  const { id } = req.params;
+
+  if (!contexto) {
+    return res.status(400).json({ error: 'Contexto obrigatório' });
+  }
+
+  const stmt = db.prepare("UPDATE matriculas SET contexto = ? WHERE id = ?");
+  stmt.run(contexto, id, function (err) {
+    if (err) {
+      return res.status(500).json({ error: 'Erro ao atualizar matrícula' });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Matrícula não encontrada' });
+    }
+    res.json({ id, contexto });
+  });
+});
 
 
 // 🟢 Apagar uma matrícula

@@ -121,6 +121,9 @@ function MatriculaSearch({ handleLogout }) {
   const [newMatricula, setNewMatricula] = useState("");
   const [newContexto, setNewContexto] = useState("");
   const [alertOpen, setAlertOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [matriculaOriginal, setMatriculaOriginal] = useState("");
+
 
   const handleSelect = (matricula) => {
     setSelected(matricula);
@@ -154,11 +157,35 @@ function MatriculaSearch({ handleLogout }) {
   // **Adicionar matrícula**
   const addMatricula = () => {
     if (!newMatricula.trim()) return;
-
-    if (matriculas.some((m) => m.id.toLowerCase() === newMatricula.toLowerCase())) {
+  
+    if (!isEditing && matriculas.some((m) => m.id.toLowerCase() === newMatricula.toLowerCase())) {
       setAlertOpen(true);
       return;
     }
+  
+    const novaMatricula = { id: newMatricula, contexto: newContexto || "" };
+  
+    const method = isEditing ? "PUT" : "POST";
+    const url = isEditing ? `${API_URL}/${matriculaOriginal}` : API_URL;
+  
+    fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(novaMatricula),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Erro ao guardar matrícula");
+        return res.json();
+      })
+      .then(() => {
+        fetchMatriculas();
+        setNewMatricula("");
+        setNewContexto("");
+        setIsDialogOpen(false);
+        setIsEditing(false);
+      })
+      .catch((error) => console.error("❌ Erro ao guardar matrícula:", error));
+  };  
 
     const novaMatricula = { id: newMatricula, contexto: newContexto || "" };
 
@@ -185,6 +212,15 @@ function MatriculaSearch({ handleLogout }) {
     setMatriculaToDelete(id);
     setDeleteConfirmOpen(true);
   };
+
+  const editMatricula = (matricula) => {
+    setIsDialogOpen(true);
+    setNewMatricula(matricula.id);
+    setNewContexto(matricula.contexto);
+    setMatriculaOriginal(matricula.id);
+    setIsEditing(true);
+  };
+  
 
   // **Apagar matrícula**
   const deleteMatricula = () => {
@@ -292,11 +328,12 @@ function MatriculaSearch({ handleLogout }) {
       {/* Dialog para Listar Matrículas */}
       <Dialog open={isListOpen} onClose={() => setIsListOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Lista de Matrículas</DialogTitle>
-        <DialogContent>
+        <DialogContent>    <IconButton edge="end" color="primary" onClick={() => editMatricula(m)}>✏️</IconButton>
           <Box sx={{ overflowX: "auto" }}>
             <List>
               {matriculas.map((m) => (
                 <ListItem key={m.id} secondaryAction={
+                  <IconButton edge="end" color="primary" onClick={() => editMatricula(m)}>✏️</IconButton>,
                   <IconButton edge="end" color="error" onClick={() => confirmDeleteMatricula(m.id)}>
                     <Delete />
                   </IconButton>
