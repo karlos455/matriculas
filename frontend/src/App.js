@@ -270,7 +270,7 @@ function MatriculaSearch({ handleLogout }) {
   }}
 >
 
-      <Typography variant="h4" gutterBottom fontWeight="bold">Pesquisador</Typography>
+      <Typography variant="h4" gutterBottom fontWeight="bold">Scanner</Typography>
       
       {/* Snackbar de sucesso - matricula apagada */}
 
