@@ -125,6 +125,8 @@ function MatriculaSearch({ handleLogout }) {
   const [editMatricula, setEditMatricula] = useState(null);
   const [editId, setEditId] = useState("");
   const [editContexto, setEditContexto] = useState("");
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
 
   const handleSelect = (matricula) => {
     setSelected(matricula);
