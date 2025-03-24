@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { TextField, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemButton, ListItemText, Typography, Box, IconButton, Snackbar, Alert } from "@mui/material";
 import { Add, List as ListIcon, Delete, FileUpload } from "@mui/icons-material";
 
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = "https://matriculas.casadocarlos.info/matriculas";
 
 // ---------------------  PAGINA LOGIN  ---------------------
 
@@ -121,6 +121,10 @@ function MatriculaSearch({ handleLogout }) {
   const [newMatricula, setNewMatricula] = useState("");
   const [newContexto, setNewContexto] = useState("");
   const [alertOpen, setAlertOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editMatricula, setEditMatricula] = useState(null);
+  const [editId, setEditId] = useState("");
+  const [editContexto, setEditContexto] = useState("");
 
   const handleSelect = (matricula) => {
     setSelected(matricula);
@@ -138,7 +142,7 @@ function MatriculaSearch({ handleLogout }) {
       .then((data) => {
         setMatriculas(data);
       })
-      .catch((error) => console.error("❌ Erro ao buscar matrículas:", error));
+      .catch((error) => console.error("❌ Erro ao pesquisar matrículas:", error));
   };
 
   useEffect(() => {
@@ -200,9 +204,38 @@ function MatriculaSearch({ handleLogout }) {
       .catch((error) => console.error("❌ Erro ao apagar matrícula:", error));
   };
 
+
+  const openEditDialog = (matricula) => {
+    setEditMatricula(matricula);
+    setEditId(matricula.id);
+    setEditContexto(matricula.contexto);
+    setEditDialogOpen(true);
+  };
+
+  const saveEdit = () => {
+    if (!editId.trim()) return;
+
+    fetch(`${API_URL}/${editMatricula.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: editId, contexto: editContexto })
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Erro ao editar matrícula");
+        return res.json();
+      })
+      .then((updated) => {
+        setMatriculas((prev) => prev.map((m) => (m.id === editMatricula.id ? updated : m)));
+        setEditDialogOpen(false);
+        setEditMatricula(null);
+      })
+      .catch((err) => console.error("❌ Erro ao editar matrícula:", err));
+  };
+
+
   return (
     <Box sx={{ padding: 2, maxWidth: 600, width: "100%", margin: "auto", textAlign: "center" }}>
-      <Typography variant="h4" gutterBottom fontWeight="bold">Scanner</Typography>
+      <Typography variant="h4" gutterBottom fontWeight="bold">Search</Typography>
 
       {/* Snackbar para alertar matrícula duplicada */}
       <Snackbar
@@ -233,7 +266,11 @@ function MatriculaSearch({ handleLogout }) {
       {filtered.length > 0 && (
         <List sx={{ border: "1px solid #ccc", borderRadius: 2, maxHeight: 200, overflowY: "auto", width: "100%" }}>
           {filtered.map((m) => (
-            <ListItem key={m.id} disablePadding>
+            <ListItem key={m.id} disablePadding secondaryAction={
+              <IconButton edge="end" color="primary" onClick={() => openEditDialog(m)}>
+                <Edit />
+              </IconButton>
+            }>
               <ListItemButton onClick={() => handleSelect(m)}>
                 <ListItemText primary={m.id} />
               </ListItemButton>
@@ -266,25 +303,25 @@ function MatriculaSearch({ handleLogout }) {
       </Box>
 
       {/* Dialog Adicionar */}
-      <Dialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Adicionar Matrícula</DialogTitle>
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Editar Matrícula</DialogTitle>
         <DialogContent>
           <TextField
-            label="Matrícula"
+            label="Nova Matrícula"
             fullWidth
-            required
-            value={newMatricula}
-            onChange={(e) => setNewMatricula(e.target.value)}
+
+            value={editId}
+            onChange={(e) => setEditId(e.target.value)}
             sx={{ mb: 2 }}
           />
           <TextField
             label="Observações"
             fullWidth
-            value={newContexto}
-            onChange={(e) => setNewContexto(e.target.value)}
+            value={editContexto}
+            onChange={(e) => setEditContexto(e.target.value)}
           />
-          <Button variant="contained" onClick={addMatricula} sx={{ mt: 2, width: "100%" }}>
-            Salvar
+          <Button variant="contained" onClick={saveEdit} sx={{ mt: 2, width: "100%" }}>
+            Guardar
           </Button>
         </DialogContent>
       </Dialog>
@@ -321,6 +358,49 @@ function MatriculaSearch({ handleLogout }) {
           </Box>
         </DialogContent>
       </Dialog>
+
+          {/* Dialog para Editar */}
+   <Dialog open={isEditOpen} onClose={() => setIsEditOpen(false)} fullWidth maxWidth="sm">
+  <DialogTitle>Editar Matrícula</DialogTitle>
+  <DialogContent>
+    <TextField
+      label="Nova Matrícula"
+      fullWidth
+      value={editMatricula}
+      onChange={(e) => setEditMatricula(e.target.value)}
+      sx={{ mb: 2 }}
+    />
+    <TextField
+      label="Novo Contexto"
+      fullWidth
+      value={editContexto}
+      onChange={(e) => setEditContexto(e.target.value)}
+    />
+    <Button
+      variant="contained"
+      sx={{ mt: 2, width: "100%" }}
+      onClick={() => {
+        fetch(`${API_URL}/${selected.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editMatricula, contexto: editContexto }),
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error("Erro ao editar matrícula");
+            return res.json();
+          })
+          .then((data) => {
+            fetchMatriculas(); // atualiza a lista
+            setSelected(null);
+            setIsEditOpen(false);
+          })
+          .catch((err) => console.error("❌ Erro ao editar matrícula:", err));
+      }}
+    >
+      Guardar
+    </Button>
+  </DialogContent>
+</Dialog>
 
 
     </Box>

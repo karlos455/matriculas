@@ -120,6 +120,27 @@ app.delete("/matriculas/:id", async (req, res) => {
   }
 });
 
+app.put("/matriculas/:id", async (req, res) => {
+  try {
+    const oldId = req.params.id;
+    const { id: newId, contexto } = req.body;
+
+    const result = await pool.query(
+      "UPDATE matriculas SET id = $1, contexto = $2 WHERE id = $3 RETURNING *",
+      [newId, contexto, oldId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Matrícula não encontrada" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Erro ao editar matrícula:", error);
+    res.status(500).json({ error: "Erro ao editar matrícula" });
+  }
+});
+
 
 
 const PORT = process.env.PORT || 5000;
