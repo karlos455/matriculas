@@ -3,7 +3,8 @@ const express = require("express");
 const cors = require("cors");
 const pool = require("./db");
 const app = express();
-const db = require("./db");
+
+app.set('case sensitive routing', false);
 
 app.use(cors());
 
@@ -35,7 +36,7 @@ app.use(express.json());
 
 async function initDB() {
   try {
-    await db.query(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS matriculas (
         id TEXT PRIMARY KEY,
         contexto TEXT
@@ -48,24 +49,6 @@ async function initDB() {
 }
 
 initDB();
-
-
-app.delete("/matriculas/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await pool.query("DELETE FROM matriculas WHERE id = $1", [id]);
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "Matrícula não encontrada" });
-    }
-
-    res.json({ message: "Matrícula apagada com sucesso" });
-  } catch (error) {
-    console.error("Erro ao apagar matrícula:", error);
-    res.status(500).json({ error: "Erro ao apagar matrícula" });
-  }
-});
-
 
 // 🟢 Obter todas as matrículas
 app.get("/matriculas", async (req, res) => {
@@ -101,8 +84,6 @@ app.post("/matriculas", async (req, res) => {
 });
 
 
-
-
 // 🟢 Apagar uma matrícula
 app.delete("/matriculas/:id", async (req, res) => {
   try {
@@ -119,6 +100,34 @@ app.delete("/matriculas/:id", async (req, res) => {
     res.status(500).json({ error: "Erro ao apagar matrícula" });
   }
 });
+
+app.put("/matriculas/:id", async (req, res) => {
+
+console.log("PUT recebido para:", req.params.id);
+console.log("Body recebido:", req.body);
+
+  try {
+    const oldId = req.params.id.toLowerCase();
+    const { id: newId, contexto } = req.body;
+
+    const result = await pool.query(
+      "UPDATE matriculas SET id = $1, contexto = $2 WHERE LOWER(id) = $3 RETURNING *",
+      [newId.toLowerCase(), contexto, oldId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Matrícula não encontrada" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Erro ao editar matrícula:", error);
+    res.status(500).json({ error: "Erro ao editar matrícula" });
+  }
+});
+
+
+
 
 
 

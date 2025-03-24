@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { TextField, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemButton, ListItemText, Typography, Box, IconButton, Snackbar, Alert } from "@mui/material";
-import { Add, List as ListIcon, Delete, FileUpload } from "@mui/icons-material";
+import { Add, List as ListIcon, Delete} from "@mui/icons-material";
+import { Edit } from "@mui/icons-material";
 
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL = "https://matriculas.casadocarlos.info/matriculas";
 
 // ---------------------  PAGINA LOGIN  ---------------------
 
@@ -121,6 +122,11 @@ function MatriculaSearch({ handleLogout }) {
   const [newMatricula, setNewMatricula] = useState("");
   const [newContexto, setNewContexto] = useState("");
   const [alertOpen, setAlertOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [matriculaOriginal, setMatriculaOriginal] = useState("");
+  const [successToast, setSuccessToast] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [deleteToast, setDeleteToast] = useState(false);
 
   const handleSelect = (matricula) => {
     setSelected(matricula);
@@ -153,32 +159,47 @@ function MatriculaSearch({ handleLogout }) {
 
   // **Adicionar matrícula**
   const addMatricula = () => {
-    if (!newMatricula.trim()) return;
-
-    if (matriculas.some((m) => m.id.toLowerCase() === newMatricula.toLowerCase())) {
+    const idNormalizado = newMatricula.trim().toLowerCase();
+    if (!idNormalizado) return;
+  
+    // Verifica duplicados com id normalizado
+    if (!isEditing && matriculas.some((m) => m.id.toLowerCase() === idNormalizado)) {
       setAlertOpen(true);
       return;
     }
-
-    const novaMatricula = { id: newMatricula, contexto: newContexto || "" };
-
-    fetch(API_URL, {
-      method: "POST",
+  
+    const novaMatricula = { id: idNormalizado, contexto: newContexto || "" };
+  
+    const method = isEditing ? "PUT" : "POST";
+    const url = isEditing ? `${API_URL}/${matriculaOriginal.toLowerCase()}` : API_URL;
+  
+    setLoading(true);
+  
+    fetch(url, {
+      method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(novaMatricula),
     })
       .then((res) => {
-        if (!res.ok) throw new Error("Erro ao adicionar matrícula");
+        if (!res.ok) throw new Error("Erro ao guardar matrícula");
         return res.json();
       })
-      .then((data) => {
-        setMatriculas((prev) => [...prev, data]);
+      .then(() => {
+        fetchMatriculas();
         setNewMatricula("");
         setNewContexto("");
         setIsDialogOpen(false);
+        if (isEditing) setSuccessToast(true);
+        setIsEditing(false);
       })
-      .catch((error) => console.error("❌ Erro ao adicionar matrícula:", error));
+      .catch((error) => console.error("❌ Erro ao guardar matrícula:", error))
+      .finally(() => setLoading(false));
   };
+  
+  
+
+  // ------- //
+  
 
   // **Confirmar exclusão**
   const confirmDeleteMatricula = (id) => {
@@ -186,23 +207,76 @@ function MatriculaSearch({ handleLogout }) {
     setDeleteConfirmOpen(true);
   };
 
+  const editMatricula = (matricula) => {
+    setIsDialogOpen(true);
+    setNewMatricula(matricula.id);
+    setNewContexto(matricula.contexto);
+    setMatriculaOriginal(matricula.id);
+    setIsEditing(true);
+  };
+  
+
   // **Apagar matrícula**
   const deleteMatricula = () => {
     if (!matriculaToDelete) return;
-
-    fetch(`${API_URL}/${matriculaToDelete}`, { method: "DELETE" })
+  
+    const idFormatado = matriculaToDelete.toLowerCase();
+  
+    fetch(`${API_URL}/${idFormatado}`, { method: "DELETE" })
       .then((res) => {
         if (!res.ok) throw new Error("Erro ao apagar matrícula");
-        setMatriculas((prev) => prev.filter((m) => m.id !== matriculaToDelete));
+  
+        setMatriculas((prev) => prev.filter((m) => m.id.toLowerCase() !== idFormatado));
         setDeleteConfirmOpen(false);
         setMatriculaToDelete(null);
+  
+        // Limpa o cartão se a matrícula visível for a apagada
+        if (selected?.id.toLowerCase() === idFormatado) {
+          setSelected(null);
+        }
+  
+        setDeleteToast(true);
       })
       .catch((error) => console.error("❌ Erro ao apagar matrícula:", error));
   };
+  
+
+
+
 
   return (
     <Box sx={{ padding: 2, maxWidth: 600, width: "100%", margin: "auto", textAlign: "center" }}>
-      <Typography variant="h4" gutterBottom fontWeight="bold">Scanner</Typography>
+      <Typography variant="h4" gutterBottom fontWeight="bold">Pesquisador</Typography>
+      
+      {/* Snackbar de sucesso - matricula apagada */}
+
+      <Snackbar
+        open={deleteToast}
+        autoHideDuration={3000}
+        onClose={() => setDeleteToast(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert onClose={() => setDeleteToast(false)} severity="success" sx={{ width: "100%" }}>
+          Matrícula apagada com sucesso!
+        </Alert>
+      </Snackbar>
+
+
+      {/* Snackbar de sucesso - matricula guardada */}
+
+          <Snackbar
+      open={successToast}
+      autoHideDuration={3000}
+      onClose={() => {
+        setSuccessToast(false);
+        setIsEditing(false);
+      }}
+       anchorOrigin={{ vertical: "top", horizontal: "center" }}
+    >
+      <Alert onClose={() => setSuccessToast(false)} severity="success" sx={{ width: "100%" }}>
+        Matrícula editada com sucesso!
+      </Alert>
+    </Snackbar>
 
       {/* Snackbar para alertar matrícula duplicada */}
       <Snackbar
@@ -244,13 +318,31 @@ function MatriculaSearch({ handleLogout }) {
 
       {/* Cartão de Detalhes */}
       {selected && (
-        <Card sx={{ mt: 4, textAlign: "center", boxShadow: 3, borderRadius: 2 }}>
-          <CardContent>
-            <Typography variant="h6" fontWeight="bold">{selected.id}</Typography>
-            <Typography variant="body1" sx={{ mt: 1 }}>{selected.contexto}</Typography>
-          </CardContent>
-        </Card>
-      )}
+      <Card sx={{ mt: 4, textAlign: "center", boxShadow: 3, borderRadius: 2 }}>
+        <CardContent>
+          <Typography variant="h6" fontWeight="bold">{selected.id}</Typography>
+          <Typography variant="body1" sx={{ mt: 1 }}>{selected.contexto}</Typography>
+
+          {/* Botões Editar e Apagar */}
+          <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2 }}>
+            <Button
+              variant="outlined"
+              color="primary"
+              onClick={() => editMatricula(selected)}
+            >
+              Editar
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={() => confirmDeleteMatricula(selected.id)}
+            >
+              Apagar
+            </Button>
+          </Box>
+        </CardContent>
+      </Card>
+    )}
 
       {/* Botões de Ação */}
       <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2, flexWrap: "wrap" }}>
@@ -265,50 +357,71 @@ function MatriculaSearch({ handleLogout }) {
         </Button>
       </Box>
 
-      {/* Dialog Adicionar */}
-      <Dialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Adicionar Matrícula</DialogTitle>
-        <DialogContent>
+        {/* Dialog Adicionar/Editar Matrícula */}
+            <Dialog
+      open={isDialogOpen}
+      onClose={() => {
+        setIsDialogOpen(false);
+        setNewMatricula("");
+        setNewContexto("");
+        setIsEditing(false);
+      }}
+      fullWidth
+      maxWidth="sm"
+    >
+          <DialogTitle>{isEditing ? "Editar Matrícula" : "Adicionar Matrícula"}</DialogTitle>
+          <DialogContent>
           <TextField
-            label="Matrícula"
-            fullWidth
-            required
-            value={newMatricula}
-            onChange={(e) => setNewMatricula(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            label="Observações"
-            fullWidth
-            value={newContexto}
-            onChange={(e) => setNewContexto(e.target.value)}
-          />
-          <Button variant="contained" onClick={addMatricula} sx={{ mt: 2, width: "100%" }}>
-            Salvar
-          </Button>
-        </DialogContent>
-      </Dialog>
+              label="Matrícula"
+              fullWidth
+              required
+              value={newMatricula}
+              onChange={(e) => setNewMatricula(e.target.value)}
+              sx={{ mb: 2 }}
+              disabled={isEditing}
+            />
+            <TextField
+              label="Observações"
+              fullWidth
+              value={newContexto}
+              onChange={(e) => setNewContexto(e.target.value)}
+            />
+            <Button
+              variant="contained"
+              onClick={addMatricula}
+              sx={{ mt: 2, width: "100%" }}
+              disabled={loading}
+            >
+              {loading ? "A guardar..." : "Salvar"}
+            </Button>
+          </DialogContent>
+        </Dialog>
+
 
       {/* Dialog para Listar Matrículas */}
-      <Dialog open={isListOpen} onClose={() => setIsListOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Lista de Matrículas</DialogTitle>
-        <DialogContent>
-          <Box sx={{ overflowX: "auto" }}>
-            <List>
-              {matriculas.map((m) => (
-                <ListItem key={m.id} secondaryAction={
-                  <IconButton edge="end" color="error" onClick={() => confirmDeleteMatricula(m.id)}>
-                    <Delete />
-                  </IconButton>
-                }>
-                  <ListItemText primary={m.id} secondary={m.contexto} />
-                </ListItem>
-              ))}
-            </List>
-          </Box>
-        </DialogContent>
-      </Dialog>
-
+<Dialog open={isListOpen} onClose={() => setIsListOpen(false)} fullWidth maxWidth="sm">
+  <DialogTitle>Lista de Matrículas</DialogTitle>
+  <DialogContent>    
+    <Box sx={{ overflowX: "auto" }}>
+      <List>
+        {matriculas.map((m) => (
+          <ListItem key={m.id} secondaryAction={
+            <>
+              <IconButton edge="end" color="primary" onClick={() => editMatricula(m)}>
+                <Edit />
+              </IconButton>
+              <IconButton edge="end" color="error" onClick={() => confirmDeleteMatricula(m.id)}>
+                <Delete />
+              </IconButton>
+            </>
+          }>
+            <ListItemText primary={m.id} secondary={m.contexto} />
+          </ListItem>
+        ))}
+      </List>
+    </Box>
+  </DialogContent>
+</Dialog>
 
 
           {/* Dialog para Confirmar Apagar */}
