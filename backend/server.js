@@ -3,7 +3,8 @@ const express = require("express");
 const cors = require("cors");
 const pool = require("./db");
 const app = express();
-const db = require("./db");
+
+app.set('case sensitive routing', false);
 
 app.use(cors());
 
@@ -35,7 +36,7 @@ app.use(express.json());
 
 async function initDB() {
   try {
-    await db.query(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS matriculas (
         id TEXT PRIMARY KEY,
         contexto TEXT
@@ -48,24 +49,6 @@ async function initDB() {
 }
 
 initDB();
-
-
-app.delete("/matriculas/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await pool.query("DELETE FROM matriculas WHERE id = $1", [id]);
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "Matrícula não encontrada" });
-    }
-
-    res.json({ message: "Matrícula apagada com sucesso" });
-  } catch (error) {
-    console.error("Erro ao apagar matrícula:", error);
-    res.status(500).json({ error: "Erro ao apagar matrícula" });
-  }
-});
-
 
 // 🟢 Obter todas as matrículas
 app.get("/matriculas", async (req, res) => {
@@ -101,28 +84,6 @@ app.post("/matriculas", async (req, res) => {
 });
 
 
-// Atualizar matrícula
-app.put('/matriculas/:id', (req, res) => {
-  const { contexto } = req.body;
-  const { id } = req.params;
-
-  if (!contexto) {
-    return res.status(400).json({ error: 'Contexto obrigatório' });
-  }
-
-  const stmt = db.prepare("UPDATE matriculas SET contexto = ? WHERE id = ?");
-  stmt.run(contexto, id, function (err) {
-    if (err) {
-      return res.status(500).json({ error: 'Erro ao atualizar matrícula' });
-    }
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Matrícula não encontrada' });
-    }
-    res.json({ id, contexto });
-  });
-});
-
-
 // 🟢 Apagar uma matrícula
 app.delete("/matriculas/:id", async (req, res) => {
   try {
@@ -141,13 +102,17 @@ app.delete("/matriculas/:id", async (req, res) => {
 });
 
 app.put("/matriculas/:id", async (req, res) => {
+
+console.log("PUT recebido para:", req.params.id);
+console.log("Body recebido:", req.body);
+
   try {
-    const oldId = req.params.id;
+    const oldId = req.params.id.toLowerCase();
     const { id: newId, contexto } = req.body;
 
     const result = await pool.query(
-      "UPDATE matriculas SET id = $1, contexto = $2 WHERE id = $3 RETURNING *",
-      [newId, contexto, oldId]
+      "UPDATE matriculas SET id = $1, contexto = $2 WHERE LOWER(id) = $3 RETURNING *",
+      [newId.toLowerCase(), contexto, oldId]
     );
 
     if (result.rowCount === 0) {
@@ -160,6 +125,9 @@ app.put("/matriculas/:id", async (req, res) => {
     res.status(500).json({ error: "Erro ao editar matrícula" });
   }
 });
+
+
+
 
 
 
