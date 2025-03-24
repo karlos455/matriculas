@@ -184,11 +184,16 @@ function MatriculaSearch({ handleLogout }) {
         if (!res.ok) throw new Error("Erro ao guardar matrícula");
         return res.json();
       })
-      .then(() => {
+      .then((updatedMatricula) => {
         fetchMatriculas();
         setNewMatricula("");
         setNewContexto("");
         setIsDialogOpen(false);
+
+        if (isEditing && selected?.id === matriculaOriginal) {
+          setSelected(updatedMatricula); 
+        }
+      
         if (isEditing) setSuccessToast(true);
         setIsEditing(false);
       })
