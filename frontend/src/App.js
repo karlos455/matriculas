@@ -270,7 +270,26 @@ function MatriculaSearch({ handleLogout }) {
   }}
 >
 
-      <Typography variant="h4" gutterBottom fontWeight="bold">Scanner</Typography>
+<Typography
+  variant="h4"
+  gutterBottom
+  fontWeight="bold"
+  sx={{
+    cursor: "pointer",
+    userSelect: "none",
+    transition: "color 0.2s ease",
+    "&:hover": {
+      color: "#1976d2",
+    },
+  }}
+  onClick={() => {
+    fetchMatriculas();
+    setSelected(null);
+    setSearch("");
+  }}
+>
+  Scanner
+</Typography>
       
       {/* Snackbar de sucesso - matricula apagada */}
 
