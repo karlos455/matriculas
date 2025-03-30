@@ -51,6 +51,55 @@ async function initDB() {
 
 initDB();
 
+
+// Adicionar matricula como vista
+
+app.put("/matriculas/:id/visto", async (req, res) => {
+  try {
+    const id = req.params.id.toLowerCase();
+    const now = new Date();
+
+    // Atualiza a última vista
+    const updateResult = await pool.query(
+      "UPDATE matriculas SET ultima_vista = $1 WHERE LOWER(id) = $2 RETURNING *",
+      [now, id]
+    );
+
+    if (updateResult.rowCount === 0) {
+      return res.status(404).json({ error: "Matrícula não encontrada" });
+    }
+
+    // Insere no histórico
+    await pool.query(
+      "INSERT INTO historico_vistos (matricula_id, data) VALUES ($1, $2)",
+      [id, now]
+    );
+
+    res.json(updateResult.rows[0]);
+  } catch (error) {
+    console.error("Erro ao atualizar última vista e guardar histórico:", error);
+    res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+
+// Historico matriculas
+
+app.get("/matriculas/:id/historico", async (req, res) => {
+  try {
+    const id = req.params.id.toLowerCase();
+    const result = await pool.query(
+      "SELECT * FROM historico_vistos WHERE matricula_id = $1 ORDER BY data DESC",
+      [id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Erro ao buscar histórico:", error);
+    res.status(500).json({ error: "Erro no servidor" });
+  }
+});
+
+
+
 // 🟢 Obter todas as matrículas
 app.get("/matriculas", async (req, res) => {
   try {

@@ -133,6 +133,35 @@ function MatriculaSearch({ handleLogout }) {
   const [successToast, setSuccessToast] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deleteToast, setDeleteToast] = useState(false);
+  const [successSeenToast, setSuccessSeenToast] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [historicoOpen, setHistoricoOpen] = useState(false);
+  const [historicoAtual, setHistoricoAtual] = useState([]);
+  const [matriculaEmFoco, setMatriculaEmFoco] = useState(null);
+
+  const mostrarHistorico = (id) => {
+    fetch(`${API_URL}/${id.toLowerCase()}/historico`)
+      .then((res) => res.json())
+      .then((data) => {
+        setHistoricoAtual(data);
+        setMatriculaEmFoco(id);
+        setHistoricoOpen(true);
+      })
+      .catch((err) => console.error("❌ Erro ao buscar histórico:", err));
+  };
+  
+
+  const fetchHistory = (id) => {
+    fetch(`${API_URL}/${id}/historico`)
+      .then((res) => res.json())
+      .then((data) => {
+        setHistory(data);
+        setIsHistoryOpen(true);
+      })
+      .catch((err) => console.error("❌ Erro ao buscar histórico:", err));
+  };
+
 
   const handleSelect = (matricula) => {
     setSelected(matricula);
@@ -163,6 +192,31 @@ function MatriculaSearch({ handleLogout }) {
     fetchMatriculas();
     setIsListOpen(true);
   };
+
+
+
+  // **Marcar como visto por último**
+const marcarComoVisto = (id) => {
+  const idFormatado = id.toLowerCase();
+
+  fetch(`${API_URL}/${idFormatado}/visto`, {
+    method: "PUT"
+  })
+    .then((res) => {
+      if (!res.ok) throw new Error("Erro ao marcar como visto");
+      return res.json();
+    })
+    .then((data) => {
+      fetchMatriculas();
+      if (selected?.id.toLowerCase() === idFormatado) {
+        setSelected(data);
+      }
+      setSuccessSeenToast(true);
+    })
+    .catch((err) => console.error("❌ Erro ao atualizar visto:", err));
+};
+
+
 
   // **Adicionar matrícula**
   const addMatricula = () => {
@@ -317,19 +371,45 @@ function MatriculaSearch({ handleLogout }) {
             })}
           </Typography>
 
+                    {selected.ultima_vista && (
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              Última vez visto: {new Date(selected.ultima_vista).toLocaleDateString("pt-PT", {
+                weekday: "long",
+                day: "2-digit",
+                month: "2-digit",
+                year: "2-digit"
+              })}, às {new Date(selected.ultima_vista).toLocaleTimeString("pt-PT", {
+                hour: "2-digit",
+                minute: "2-digit"
+              })}
+            </Typography>
+          )}
+
             {/* Botões Editar e Apagar */}
             <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2 }}>
               <Button variant="outlined" color="primary" onClick={() => editMatricula(selected)}>Editar</Button>
               <Button variant="outlined" color="error" onClick={() => confirmDeleteMatricula(selected.id)}>Apagar</Button>
+              <Button variant="contained" color="success" onClick={() => marcarComoVisto(selected.id)}>Visto agora</Button>
+              <Button variant="outlined" onClick={() => fetchHistory(selected.id)}> Histórico </Button>
+
             </Box>
           </CardContent>
         </Card>
       )}
       {/* Botões de Ação */}
       <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2, flexWrap: "wrap" }}>
-        <Button variant="contained" startIcon={<Add />} onClick={() => setIsDialogOpen(true)}>
-          Adicionar
-        </Button>
+      <Button
+        variant="contained"
+        startIcon={<Add />}
+        onClick={() => {
+          if (!isEditing) {
+            setNewMatricula(search); 
+          }
+          setIsDialogOpen(true);
+        }}
+      >
+        Adicionar
+      </Button>
         <Button variant="contained" color="secondary" startIcon={<ListIcon />} onClick={listarTodas}>
           Listar Todas
         </Button>
@@ -396,6 +476,10 @@ function MatriculaSearch({ handleLogout }) {
                       <IconButton edge="end" color="error" onClick={() => confirmDeleteMatricula(m.id)}>
                         <Delete />
                       </IconButton>
+                      <IconButton edge="end" color="info" onClick={() => mostrarHistorico(m.id)}>
+                        📜
+                      </IconButton>
+
                     </>
                   }
                 >
@@ -405,13 +489,36 @@ function MatriculaSearch({ handleLogout }) {
                       <>
                         {m.contexto && <>{m.contexto}<br /></>}
                         {m.data && (
-                          <Typography variant="caption" color="text.secondary">
-                            Adicionado em: {new Date(m.data).toLocaleString("pt-PT", {
-                              dateStyle: "short",
-                              timeStyle: "short"
-                            })}
-                          </Typography>
-                        )}
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        Adicionado em: {new Date(m.data).toLocaleDateString("pt-PT", {
+                          weekday: "long",
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "2-digit"
+                        })}, às {new Date(m.data).toLocaleTimeString("pt-PT", {
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })}
+                      </Typography>
+                    )}
+                    {m.ultima_vista && (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        display="block"
+                        sx={{ mt: 0.5 }}
+                      >
+                        Última vez visto: {new Date(m.ultima_vista).toLocaleDateString("pt-PT", {
+                          weekday: "long",
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "2-digit"
+                        })}, às {new Date(m.ultima_vista).toLocaleTimeString("pt-PT", {
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })}
+                      </Typography>
+                    )}
                       </>
                     }
                   />
@@ -433,6 +540,70 @@ function MatriculaSearch({ handleLogout }) {
         </DialogContent>
       </Dialog>
 
+      {/* Dialog para ver Histórico */}
+
+      <Dialog open={historicoOpen} onClose={() => setHistoricoOpen(false)} fullWidth maxWidth="sm">
+  <DialogTitle>Histórico de visualizações - {matriculaEmFoco}</DialogTitle>
+  <DialogContent>
+    {historicoAtual.length === 0 ? (
+      <Typography variant="body2" color="text.secondary">Sem histórico disponível.</Typography>
+    ) : (
+      <List>
+        {historicoAtual.map((item, index) => (
+          <ListItem key={index}>
+            <ListItemText
+              primary={`Vista em: ${new Date(item.data).toLocaleDateString("pt-PT", {
+                weekday: "long",
+                day: "2-digit",
+                month: "2-digit",
+                year: "2-digit"
+              })}, às ${new Date(item.data).toLocaleTimeString("pt-PT", {
+                hour: "2-digit",
+                minute: "2-digit"
+              })}`}
+            />
+          </ListItem>
+        ))}
+      </List>
+    )}
+  </DialogContent>
+</Dialog>
+
+
+       {/* Dialog para mostrar histórico de visualizacoes */}
+
+      <Dialog open={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} fullWidth maxWidth="sm">
+  <DialogTitle>Histórico de visualizações</DialogTitle>
+  <DialogContent>
+    {history.length === 0 ? (
+      <Typography variant="body2" color="text.secondary">
+        Ainda sem histórico.
+      </Typography>
+    ) : (
+      <List>
+        {history.map((visto, index) => (
+          <ListItem key={index}>
+            <ListItemText
+              primary={`Visto em: ${new Date(visto.data).toLocaleDateString("pt-PT", {
+                weekday: "long",
+                day: "2-digit",
+                month: "2-digit",
+                year: "2-digit",
+              })}, às ${new Date(visto.data).toLocaleTimeString("pt-PT", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}`}
+            />
+          </ListItem>
+        ))}
+      </List>
+    )}
+  </DialogContent>
+</Dialog>
+
+
+
+
       {/* Snackbar de sucesso - matrícula apagada */}
       <Snackbar
         open={deleteToast}
@@ -444,6 +615,18 @@ function MatriculaSearch({ handleLogout }) {
           Matrícula apagada com sucesso!
         </Alert>
       </Snackbar>
+
+      {/* Snackbar de sucesso - matrícula marcada como vista! */}
+          <Snackbar
+      open={successSeenToast}
+      autoHideDuration={3000}
+      onClose={() => setSuccessSeenToast(false)}
+      anchorOrigin={{ vertical: "top", horizontal: "center" }}
+    >
+      <Alert onClose={() => setSuccessSeenToast(false)} severity="info" sx={{ width: "100%" }}>
+        Matrícula marcada como vista!
+      </Alert>
+    </Snackbar>
 
       {/* Snackbar de sucesso - matrícula editada */}
       <Snackbar
