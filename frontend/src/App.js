@@ -6,6 +6,7 @@ import {
 } from "@mui/material";
 import { Add, List as ListIcon, Delete } from "@mui/icons-material";
 import { Edit } from "@mui/icons-material";
+import { Grow } from "@mui/material";
 
 const API_URL = "https://matriculas.casadocarlos.info/matriculas";
 
@@ -139,6 +140,12 @@ function MatriculaSearch({ handleLogout }) {
   const [historicoOpen, setHistoricoOpen] = useState(false);
   const [historicoAtual, setHistoricoAtual] = useState([]);
   const [matriculaEmFoco, setMatriculaEmFoco] = useState(null);
+  const [successAddedToast, setSuccessAddedToast] = useState(false);
+  const [highlightCard, setHighlightCard] = useState(false);
+  const isGreenHighlight = selected?.contexto?.includes("✅");
+  const isRedHighlight = selected?.contexto?.includes("⛔️");
+  const [cor, setCor] = useState(""); 
+
 
   const mostrarHistorico = (id) => {
     fetch(`${API_URL}/${id.toLowerCase()}/historico`)
@@ -166,6 +173,9 @@ function MatriculaSearch({ handleLogout }) {
   const handleSelect = (matricula) => {
     setSelected(matricula);
     setSearch("");
+    setIsListOpen(false);
+    setHighlightCard(true);
+    setTimeout(() => setHighlightCard(false), 800);
   };
 
   const filtered = search.trim() && !selected
@@ -229,7 +239,7 @@ const marcarComoVisto = (id) => {
       return;
     }
 
-    const novaMatricula = { id: idNormalizado, contexto: newContexto || "" };
+    const novaMatricula = { id: idNormalizado, contexto: newContexto || "", cor };
 
     const method = isEditing ? "PUT" : "POST";
     const url = isEditing ? `${API_URL}/${matriculaOriginal.toLowerCase()}` : API_URL;
@@ -255,8 +265,11 @@ const marcarComoVisto = (id) => {
           setSelected(updatedMatricula);
         }
 
-        if (isEditing) setSuccessToast(true);
-        setIsEditing(false);
+        if (isEditing) {
+          setSuccessToast(true);
+        } else {
+          setSuccessAddedToast(true);
+        }        
       })
       .catch((error) => console.error("❌ Erro ao guardar matrícula:", error))
       .finally(() => setLoading(false));
@@ -274,6 +287,7 @@ const marcarComoVisto = (id) => {
     setIsDialogOpen(true);
     setNewMatricula(matricula.id);
     setNewContexto(matricula.contexto);
+    setCor(matricula.cor || "");
     setMatriculaOriginal(matricula.id);
     setIsEditing(true);
   };
@@ -305,7 +319,7 @@ const marcarComoVisto = (id) => {
   return (
     <Box sx={{ p: 2, maxWidth: 600, mx: "auto", textAlign: "center" }}>
       <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ cursor: "pointer" }} onClick={() => { fetchMatriculas(); setSelected(null); setSearch(""); }}>
-        Scanner
+        Pesquisa
       </Typography>
 
       {/* Campo de Pesquisa */}
@@ -353,49 +367,173 @@ const marcarComoVisto = (id) => {
         </List>
       )}
 
-      {/* Cartão de Detalhes */}
+      {/* Cartão de Detalhes com animação */}
       {selected && (
-        <Card sx={{ mt: 4, textAlign: "center", boxShadow: 3, borderRadius: 2 }}>
-          <CardContent>
-            <Typography variant="h6" fontWeight="bold">{selected.id}</Typography>
-            <Typography variant="body1" sx={{ mt: 1 }}>{selected.contexto}</Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-            Adicionado em: {new Date(selected.data).toLocaleDateString("pt-PT", {
-              weekday: "long",
-              day: "2-digit",
-              month: "2-digit",
-              year: "2-digit"
-            })}, às {new Date(selected.data).toLocaleTimeString("pt-PT", {
-              hour: "2-digit",
-              minute: "2-digit"
-            })}
-          </Typography>
+        <Grow in={true} timeout={300}>
+          <Box>
+            {(() => {
+              const isGreenHighlight = selected.contexto?.includes("✅");
+              const isRedHighlight = selected.contexto?.includes("⛔️");
 
-                    {selected.ultima_vista && (
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-              Última vez visto: {new Date(selected.ultima_vista).toLocaleDateString("pt-PT", {
-                weekday: "long",
-                day: "2-digit",
-                month: "2-digit",
-                year: "2-digit"
-              })}, às {new Date(selected.ultima_vista).toLocaleTimeString("pt-PT", {
-                hour: "2-digit",
-                minute: "2-digit"
-              })}
-            </Typography>
-          )}
+              return (
+<Card
+  sx={{
+    mt: 4,
+    textAlign: "center",
+    boxShadow: 3,
+    borderRadius: 3,
+    p: 2,
+    backgroundColor: isGreenHighlight
+      ? "#e6f4ea"
+      : isRedHighlight
+      ? "#fbeaea"
+      : "#fefefe",
+    border: highlightCard ? "2px solid #64b5f6" : "2px solid transparent",
+    transition: "border 0.4s ease, background-color 0.4s ease",
+  }}
+>
 
-            {/* Botões Editar e Apagar */}
-            <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2 }}>
-              <Button variant="outlined" color="primary" onClick={() => editMatricula(selected)}>Editar</Button>
-              <Button variant="outlined" color="error" onClick={() => confirmDeleteMatricula(selected.id)}>Apagar</Button>
-              <Button variant="contained" color="success" onClick={() => marcarComoVisto(selected.id)}>Visto agora</Button>
-              <Button variant="outlined" onClick={() => fetchHistory(selected.id)}> Histórico </Button>
 
-            </Box>
-          </CardContent>
-        </Card>
+  <CardContent>
+  <Typography variant="h6" fontWeight="bold">
+  {selected.id}
+</Typography>
+
+{selected.cor && (
+  <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 1, mt: 1 }}>
+  {selected.cor ? (
+    <>
+      <Box
+        sx={{
+          width: 16,
+          height: 16,
+          borderRadius: "50%",
+          backgroundColor: selected.cor,
+          border: "1px solid #999"
+        }}
+      />
+      <Typography variant="caption" color="text.secondary">
+        {selected.cor.charAt(0).toUpperCase() + selected.cor.slice(1)}
+      </Typography>
+    </>
+  ) : (
+    <Typography variant="caption" color="text.secondary">
+      N/A
+    </Typography>
+  )}
+</Box>
+
+)}
+
+<Typography variant="body1" sx={{ mb: 1 }}>
+  {selected.contexto}
+</Typography>
+
+
+
+    <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+      Adicionado em:{" "}
+      {new Date(selected.data).toLocaleDateString("pt-PT", {
+        weekday: "long",
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+      })}, às{" "}
+      {new Date(selected.data).toLocaleTimeString("pt-PT", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}
+    </Typography>
+
+    {selected.ultima_vista && (
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{ mt: 1, display: "block" }}
+      >
+        Última vez visto:{" "}
+        {new Date(selected.ultima_vista).toLocaleDateString("pt-PT", {
+          weekday: "long",
+          day: "2-digit",
+          month: "2-digit",
+          year: "2-digit",
+        })}, às{" "}
+        {new Date(selected.ultima_vista).toLocaleTimeString("pt-PT", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
+      </Typography>
+    )}
+
+    {/* Botões */}
+    <Box
+      sx={{
+        display: "flex",
+        flexWrap: "wrap",
+        justifyContent: "center",
+        gap: 2,
+        mt: 2,
+      }}
+    >
+      {[
+        {
+          label: "VISTO AGORA",
+          color: "success",
+          variant: "contained",
+          onClick: () => marcarComoVisto(selected.id),
+        },
+        {
+          label: "HISTÓRICO",
+          color: "primary",
+          variant: "outlined",
+          onClick: () => fetchHistory(selected.id),
+        },
+        {
+          label: "EDITAR",
+          color: "primary",
+          variant: "outlined",
+          onClick: () => editMatricula(selected),
+        },
+        {
+          label: "APAGAR",
+          color: "error",
+          variant: "outlined",
+          onClick: () => confirmDeleteMatricula(selected.id),
+        },
+      ].map((btn, i) => (
+        <Button
+          key={i}
+          variant={btn.variant}
+          color={btn.color}
+          onClick={btn.onClick}
+          sx={{
+            flex: "1 1 40%",
+            maxWidth: 180,
+            fontSize: "0.9rem",
+            fontWeight: "bold",
+            py: 1.2,
+            transition: "all 0.2s ease-in-out",
+            borderRadius: 2,
+            boxShadow: btn.variant === "contained" ? 2 : "none",
+            "&:hover": {
+              transform: "scale(1.05)",
+              boxShadow: btn.variant === "contained" ? 4 : 2,
+            },
+          }}
+        >
+          {btn.label}
+        </Button>
+      ))}
+    </Box>
+  </CardContent>
+</Card>
+
+              );
+            })()}
+          </Box>
+        </Grow>
       )}
+
       {/* Botões de Ação */}
       <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2, flexWrap: "wrap" }}>
       <Button
@@ -431,103 +569,201 @@ const marcarComoVisto = (id) => {
         maxWidth="sm"
         PaperProps={{ sx: { mx: 2, borderRadius: 3 } }}
       >
-        <DialogTitle>{isEditing ? "Editar Matrícula" : "Adicionar Matrícula"}</DialogTitle>
-        <DialogContent>
+        <DialogTitle
+          sx={{ display: "flex", alignItems: "center", gap: 1, fontWeight: "bold", fontSize: "1.4rem", textAlign: "center", justifyContent: "center" }}
+        >
+          <Add fontSize="medium" />
+          {isEditing ? "Editar Matrícula" : "Adicionar Matrícula"}
+        </DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <TextField
             label="Matrícula"
             fullWidth
             required
             value={newMatricula}
             onChange={(e) => setNewMatricula(e.target.value)}
-            sx={{ mb: 2 }}
+            variant="outlined"
+            InputLabelProps={{ shrink: true }}
             disabled={isEditing}
           />
           <TextField
             label="Observações"
             fullWidth
+            multiline
+            minRows={2}
             value={newContexto}
             onChange={(e) => setNewContexto(e.target.value)}
+            variant="outlined"
+            InputLabelProps={{ shrink: true }}
           />
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            Cor:
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", mt: 1 }}>
+          {["red", "blue", "black", "gray", "silver", "green", "yellow"].map((colorOption) => (
+            <Box
+              key={colorOption}
+              onClick={() => setCor(colorOption)}
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: "50%",
+                backgroundColor: colorOption,
+                border: cor === colorOption ? "3px solid #1976d2" : "2px solid #ddd",
+                boxShadow: cor === colorOption ? "0 0 6px #1976d2" : "none",
+                cursor: "pointer",
+                transition: "all 0.2s ease-in-out",
+                "&:hover": {
+                  transform: "scale(1.15)",
+                  boxShadow: "0 0 6px rgba(0, 0, 0, 0.3)"
+                }
+              }}
+            />
+          ))}
+        </Box>
+
+
+
           <Button
             variant="contained"
             onClick={addMatricula}
-            sx={{ mt: 2, width: "100%" }}
+            sx={{
+              mt: 1,
+              fontWeight: "bold",
+              py: 1.3,
+              fontSize: "1rem",
+              borderRadius: 2,
+              boxShadow: 2,
+              textTransform: "uppercase",
+            }}
             disabled={loading}
           >
             {loading ? "A guardar..." : "Salvar"}
           </Button>
         </DialogContent>
+
       </Dialog>
-
-      {/* Dialog para Listar Matrículas */}
-      <Dialog open={isListOpen} onClose={() => setIsListOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Lista de Matrículas</DialogTitle>
-        <DialogContent>
-          <Box sx={{ overflowX: "auto" }}>
-            <List>
-              {matriculas.map((m) => (
-                <ListItem
-                  key={m.id}
-                  secondaryAction={
-                    <>
-                      <IconButton edge="end" color="primary" onClick={() => editMatricula(m)}>
-                        <Edit />
-                      </IconButton>
-                      <IconButton edge="end" color="error" onClick={() => confirmDeleteMatricula(m.id)}>
-                        <Delete />
-                      </IconButton>
-                      <IconButton edge="end" color="info" onClick={() => mostrarHistorico(m.id)}>
-                        📜
-                      </IconButton>
-
-                    </>
+{/* Dialog para Listar Matrículas */}
+<Dialog open={isListOpen} onClose={() => setIsListOpen(false)} fullWidth maxWidth="sm">
+  <DialogTitle>Lista de Matrículas</DialogTitle>
+  <DialogContent>
+    <Box sx={{ overflowX: "auto" }}>
+      <List sx={{ p: 0 }}>
+        {matriculas.map((m) => {
+          const isGreenHighlight = m.contexto?.includes("✅");
+          const isRedHighlight = m.contexto?.includes("⛔️");
+          return (
+              <Card
+                key={m.id}
+                sx={{
+                  mb: 2,
+                  p: 2,
+                  boxShadow: 3,
+                  borderRadius: 3,
+                  cursor: "pointer",
+                  backgroundColor: isGreenHighlight
+                    ? "#e6f4ea"
+                    : isRedHighlight
+                    ? "#fbeaea"
+                    : "white",
+                  transition: "background 0.2s ease-in-out",
+                  "&:hover": {
+                    backgroundColor: isGreenHighlight
+                      ? "#d4ecdd"
+                      : isRedHighlight
+                      ? "#f5d7d7"
+                      : "#f9f9f9"
                   }
-                >
-                  <ListItemText
-                    primary={m.id}
-                    secondary={
-                      <>
-                        {m.contexto && <>{m.contexto}<br /></>}
-                        {m.data && (
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        Adicionado em: {new Date(m.data).toLocaleDateString("pt-PT", {
-                          weekday: "long",
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "2-digit"
-                        })}, às {new Date(m.data).toLocaleTimeString("pt-PT", {
-                          hour: "2-digit",
-                          minute: "2-digit"
-                        })}
-                      </Typography>
-                    )}
-                    {m.ultima_vista && (
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        display="block"
-                        sx={{ mt: 0.5 }}
-                      >
-                        Última vez visto: {new Date(m.ultima_vista).toLocaleDateString("pt-PT", {
-                          weekday: "long",
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "2-digit"
-                        })}, às {new Date(m.ultima_vista).toLocaleTimeString("pt-PT", {
-                          hour: "2-digit",
-                          minute: "2-digit"
-                        })}
-                      </Typography>
-                    )}
-                      </>
-                    }
+                }}
+                onClick={() => {
+                  handleSelect(m);
+                  setIsListOpen(false);
+                }}              >
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <Box sx={{ textAlign: "left" }}>
+                  <Typography variant="h6" fontWeight="bold">{m.id}</Typography>
+                  {m.cor && (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                  <Box
+                    sx={{
+                      width: 14,
+                      height: 14,
+                      borderRadius: "50%",
+                      backgroundColor: m.cor,
+                      border: "1px solid #999"
+                    }}
                   />
-                </ListItem>
-              ))}
-            </List>
-          </Box>
-        </DialogContent>
-      </Dialog>
+                  <Typography variant="caption" color="text.secondary">
+                    {m.cor.charAt(0).toUpperCase() + m.cor.slice(1)}
+                  </Typography>
+                </Box>
+              )}
+
+
+                {m.contexto && (
+                  <Typography sx={{ mb: 0.5 }}>{m.contexto}</Typography>
+                )}
+                  {m.data && (
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      Adicionado em: {new Date(m.data).toLocaleDateString("pt-PT", {
+                        weekday: "long",
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "2-digit"
+                      })}, às {new Date(m.data).toLocaleTimeString("pt-PT", {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      })}
+                    </Typography>
+                  )}
+                  {m.ultima_vista && (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      display="block"
+                      sx={{ mt: 0.5 }}
+                    >
+                      Última vez visto: {new Date(m.ultima_vista).toLocaleDateString("pt-PT", {
+                        weekday: "long",
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "2-digit"
+                      })}, às {new Date(m.ultima_vista).toLocaleTimeString("pt-PT", {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      })}
+                    </Typography>
+                  )}
+                </Box>
+
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                  <IconButton
+                    color="primary"
+                    onClick={(e) => { e.stopPropagation(); editMatricula(m); }}
+                  >
+                    <Edit />
+                  </IconButton>
+                  <IconButton
+                    color="error"
+                    onClick={(e) => { e.stopPropagation(); confirmDeleteMatricula(m.id); }}
+                  >
+                    <Delete />
+                  </IconButton>
+                  <IconButton
+                    color="info"
+                    onClick={(e) => { e.stopPropagation(); mostrarHistorico(m.id); }}
+                  >
+                    📜
+                  </IconButton>
+                </Box>
+              </Box>
+            </Card>
+          );
+        })}
+      </List>
+    </Box>
+  </DialogContent>
+</Dialog>
 
       {/* Dialog para Confirmar Apagar */}
       <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} fullWidth maxWidth="xs">
@@ -628,6 +864,18 @@ const marcarComoVisto = (id) => {
       </Alert>
     </Snackbar>
 
+      {/* Snackbar de sucesso - matrícula adicionada */}
+          <Snackbar
+        open={successAddedToast}
+        autoHideDuration={3000}
+        onClose={() => setSuccessAddedToast(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert onClose={() => setSuccessAddedToast(false)} severity="success" sx={{ width: "100%" }}>
+          Matrícula adicionada com sucesso!
+        </Alert>
+      </Snackbar>
+
       {/* Snackbar de sucesso - matrícula editada */}
       <Snackbar
         open={successToast}
@@ -654,7 +902,14 @@ const marcarComoVisto = (id) => {
           Esta matrícula já existe!
         </Alert>
       </Snackbar>
+
+      {/* Footer */}
+      <Box sx={{ mt: 4, textAlign: "center", fontSize: "0.8rem", color: "text.secondary" }}>
+        © Carlos Santos · versão 1.5
+      </Box>
+            
     </Box>
+    
   );
 }
 

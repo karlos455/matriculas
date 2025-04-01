@@ -40,7 +40,9 @@ async function initDB() {
       CREATE TABLE IF NOT EXISTS matriculas (
         id TEXT PRIMARY KEY,
         contexto TEXT,
-        data TIMESTAMP DEFAULT NOW()
+        cor TEXT,
+        data TIMESTAMP DEFAULT NOW(),
+        ultima_vista TIMESTAMP
       );
     `);
     console.log("Tabela 'matriculas' verificada/criada com sucesso!");
@@ -115,17 +117,17 @@ app.get("/matriculas", async (req, res) => {
 // 🟢 Adicionar uma nova matrícula
 app.post("/matriculas", async (req, res) => {
   try {
-    const { id, contexto } = req.body;
+    const { id, contexto, cor } = req.body;
 
     if (!id) {
       return res.status(400).json({ error: "O campo matrícula é obrigatório" });
     }
 
     const newMatricula = await pool.query(
-      "INSERT INTO matriculas (id, contexto) VALUES ($1, $2) RETURNING *",
-      [id, contexto]
+      "INSERT INTO matriculas (id, contexto, cor) VALUES ($1, $2, $3) RETURNING *",
+      [id.toLowerCase(), contexto, cor]
     );
-
+    
     res.json(newMatricula.rows[0]);
   } catch (err) {
     console.error(err.message);
@@ -155,13 +157,13 @@ app.put("/matriculas/:id", async (req, res) => {
 
   try {
     const oldId = req.params.id.toLowerCase();
-    const { id: newId, contexto } = req.body;
+    const { id: newId, contexto, cor } = req.body;
 
     const result = await pool.query(
-      "UPDATE matriculas SET id = $1, contexto = $2 WHERE LOWER(id) = $3 RETURNING *",
-      [newId.toLowerCase(), contexto, oldId]
+      "UPDATE matriculas SET id = $1, contexto = $2, cor = $3 WHERE LOWER(id) = $4 RETURNING *",
+      [newId.toLowerCase(), contexto, cor, oldId]
     );
-
+   
     if (result.rowCount === 0) {
       return res.status(404).json({ error: "Matrícula não encontrada" });
     }
