@@ -147,7 +147,7 @@ function MatriculaSearch({ handleLogout }) {
   const isGreenHighlight = selected?.contexto?.includes("✅");
   const isRedHighlight = selected?.contexto?.includes("⛔️");
   const [cor, setCor] = useState(""); 
-
+  const [estadoCartao, setEstadoCartao] = useState("normal");
 
   const mostrarHistorico = (id) => {
     fetch(`${API_URL}/${id.toLowerCase()}/historico`)
@@ -241,8 +241,13 @@ const marcarComoVisto = (id) => {
       return;
     }
 
-    const novaMatricula = { id: idNormalizado, contexto: newContexto || "", cor };
+    let contextoFinal = newContexto.trim();
 
+    if (estadoCartao === "verde") contextoFinal = `✅ ${contextoFinal}`;
+    else if (estadoCartao === "vermelho") contextoFinal = `⛔️ ${contextoFinal}`;
+    
+    const novaMatricula = { id: idNormalizado, contexto: contextoFinal, cor };
+    
     const method = isEditing ? "PUT" : "POST";
     const url = isEditing ? `${API_URL}/${matriculaOriginal.toLowerCase()}` : API_URL;
 
@@ -290,11 +295,20 @@ const marcarComoVisto = (id) => {
   const editMatricula = (matricula) => {
     setIsDialogOpen(true);
     setNewMatricula(matricula.id);
-    setNewContexto(matricula.contexto);
+    setNewContexto(matricula.contexto?.replace(/✅|⛔️/g, "").trim());
     setCor(matricula.cor || "");
     setMatriculaOriginal(matricula.id);
     setIsEditing(true);
+  
+    if (matricula.contexto?.includes("✅")) {
+      setEstadoCartao("verde");
+    } else if (matricula.contexto?.includes("⛔️")) {
+      setEstadoCartao("vermelho");
+    } else {
+      setEstadoCartao("normal");
+    }
   };
+  
 
   // **Apagar matrícula**
   const deleteMatricula = () => {
@@ -346,36 +360,52 @@ const marcarComoVisto = (id) => {
 
       {/* Lista de Resultados da Pesquisa */}
       {filtered.length > 0 && (
-        <List sx={{ border: "1px solid #ccc", borderRadius: 2, maxHeight: 200, overflowY: "auto" }}>
-          {filtered.map((m) => (
-            <ListItem key={m.id} disablePadding>
-              <ListItemButton onClick={() => handleSelect(m)}>
-                <ListItemText
-                  primary={<Typography fontWeight="bold">{m.id}</Typography>}
-                  secondary={
-                    <>
-                      <Typography variant="body2" color="text.secondary">{m.contexto}</Typography>
-                      {m.data && (
-                        <Typography variant="caption" color="text.secondary">
-                    Adicionado em: {new Date(m.data).toLocaleDateString("pt-PT", {
-                          weekday: "long",
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "2-digit"
-                        })}, às {new Date(m.data).toLocaleTimeString("pt-PT", {
-                          hour: "2-digit",
-                          minute: "2-digit"
-                    })}                      
-                      </Typography>
-                      )}
-                    </>
-                  }
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-      )}
+  <List sx={{ px: 0, pt: 1, maxHeight: 240, overflowY: "auto" }}>
+    {filtered.map((m) => (
+      <ListItem key={m.id} disablePadding>
+        <ListItemButton
+          onClick={() => handleSelect(m)}
+          sx={{
+            backgroundColor: m.contexto?.includes("✅")
+              ? "#e6f4ea"
+              : m.contexto?.includes("⛔️")
+              ? "#fbeaea"
+              : "#fefefe",
+            "&:hover": {
+              backgroundColor: m.contexto?.includes("✅")
+                ? "#d2ebd9"
+                : m.contexto?.includes("⛔️")
+                ? "#f4dcdc"
+                : "#f7f7f7",
+              boxShadow: "0 2px 6px rgba(0, 0, 0, 0.1)",
+            },
+            transition: "all 0.25s ease-in-out",
+            borderRadius: 2,
+            m: 1,
+            px: 2,
+            py: 1.5,
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+          }}
+        >
+          <ListItemText
+            primary={
+              <Typography fontWeight="bold" sx={{ color: "#1b263b" }}>
+                {m.id.toUpperCase()}
+              </Typography>
+            }
+            secondary={
+              <Typography variant="body2" sx={{ color: "#444", fontSize: "0.85rem" }}>
+                {m.contexto?.replace(/✅|⛔️/g, "").trim()}
+              </Typography>
+            }
+          />
+        </ListItemButton>
+      </ListItem>
+    ))}
+  </List>
+)}
+
+
 
       {/* Cartão de Detalhes com animação */}
       {selected && (
@@ -411,34 +441,25 @@ const marcarComoVisto = (id) => {
 
 
 {selected.cor && (
-  <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 1, mt: 1 }}>
-  {selected.cor ? (
-    <>
-      <Box
-        sx={{
-          width: 16,
-          height: 16,
-          borderRadius: "50%",
-          backgroundColor: selected.cor,
-          border: "1px solid #999"
-        }}
-      />
-    <Typography variant="body2" sx={{ opacity: 0.7, fontStyle: "italic" }}>
-      {selected.cor.charAt(0).toUpperCase() + selected.cor.slice(1)}
-    </Typography>
-    </>
-  ) : (
-    <Typography variant="caption" color="text.secondary">
-      N/A
-    </Typography>
-  )}
+  <Box sx={{ display: "flex", justifyContent: "center", mt: 1 }}>
+  <Box
+    sx={{
+      width: 16,
+      height: 16,
+      borderRadius: "50%",
+      backgroundColor: selected.cor,
+      border: "1px solid #999"
+    }}
+  />
 </Box>
+
 
 )}
 
-    <Typography variant="body1" sx={{ mt: 1, fontSize: "0.95rem", color: "#333" }}>
-      {selected.contexto}
-    </Typography>
+          <Typography variant="body1" sx={{ mt: 1, fontSize: "0.95rem", color: "#333" }}>
+            {selected.contexto?.replace(/✅|⛔️/g, "").trim()}
+          </Typography>
+
 
 
     <Typography variant="caption" sx={{ display: "block", mt: 1, fontSize: "0.75rem", color: "text.secondary" }}>
@@ -560,6 +581,7 @@ const marcarComoVisto = (id) => {
         onClick={() => {
           if (!isEditing) {
             setNewMatricula(search);
+            setEstadoCartao("normal"); 
           }
           setIsDialogOpen(true);
         }}
@@ -656,7 +678,7 @@ const marcarComoVisto = (id) => {
           label="Observações"
           fullWidth
           multiline
-          minRows={2}
+          minRows={1}
           value={newContexto}
           onChange={(e) => setNewContexto(e.target.value)}
           variant="outlined"
@@ -668,6 +690,32 @@ const marcarComoVisto = (id) => {
 </Typography>
 
 <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mt: 1 }}>
+  {/* Opção para remover cor */}
+  <Box
+    onClick={() => setCor("")}
+    sx={{
+      width: 36,
+      height: 36,
+      borderRadius: "50%",
+      border: "2px dashed #999",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: "0.8rem",
+      cursor: "pointer",
+      color: "#999",
+      "&:hover": {
+        backgroundColor: "#f0f0f0"
+      },
+      outline: cor === "" ? "3px solid #1b263b" : "none",
+      outlineOffset: 2
+    }}
+    title="Sem cor"
+  >
+    ✕
+  </Box>
+
+  {/* Cores disponíveis */}
   {["white", "red", "blue", "black", "gray", "silver", "green", "yellow"].map((colorOption) => {
     const isSelected = cor === colorOption;
 
@@ -689,10 +737,46 @@ const marcarComoVisto = (id) => {
             transform: "scale(1.1)",
           },
         }}
+        title={colorOption}
       />
     );
   })}
 </Box>
+
+
+<Typography variant="body2" sx={{ mt: 3 }}>
+  Estado:
+</Typography>
+
+<Box sx={{ display: "flex", gap: 2, mt: 1 }}>
+  {[
+    { valor: "normal", cor: "white", label: "Normal" },
+    { valor: "verde", cor: "#e6f4ea", label: "Verde" },
+    { valor: "vermelho", cor: "#fbeaea", label: "Vermelho" },
+  ].map(({ valor, cor, label }) => (
+    <Box
+      key={valor}
+      onClick={() => setEstadoCartao(valor)}
+      sx={{
+        width: 30,
+        height: 30,
+        borderRadius: "50%",
+        backgroundColor: cor,
+        border: "2px solid #999",
+        cursor: "pointer",
+        outline: estadoCartao === valor ? "3px solid #1b263b" : "none",
+        outlineOffset: 2,
+        transition: "all 0.2s ease-in-out",
+        "&:hover": {
+          transform: "scale(1.1)",
+        },
+      }}
+      title={label}
+    />
+  ))}
+</Box>
+
+
 
 
 
@@ -816,8 +900,9 @@ const marcarComoVisto = (id) => {
 
                       {m.contexto && (
                         <Typography variant="body2" sx={{ color: "#444", mt: 0.5 }}>
-                        {m.contexto}
-                      </Typography>
+                          {m.contexto?.replace(/✅|⛔️/g, "").trim()}
+                        </Typography>
+
                       )}
                         {m.data && (
                           <Typography variant="caption" sx={{ fontSize: "0.75rem", color: "#888", mt: 0.5 }}>
@@ -1070,7 +1155,7 @@ const marcarComoVisto = (id) => {
 
       {/* Footer */}
       <Box sx={{ mt: 4, textAlign: "center", fontSize: "0.8rem", color: "text.secondary" }}>
-        © Carlos Santos · versão 1.5
+        © Carlos Santos · versão 1.7
       </Box>
             
     </Box>
