@@ -7,6 +7,8 @@ import {
 import { Add, List as ListIcon, Delete } from "@mui/icons-material";
 import { Edit } from "@mui/icons-material";
 import { Grow } from "@mui/material";
+import { History } from "@mui/icons-material";
+
 
 const API_URL = "https://matriculas.casadocarlos.info/matriculas";
 
@@ -265,6 +267,8 @@ const marcarComoVisto = (id) => {
           setSelected(updatedMatricula);
         }
 
+        setSelected(updatedMatricula);
+
         if (isEditing) {
           setSuccessToast(true);
         } else {
@@ -311,7 +315,13 @@ const marcarComoVisto = (id) => {
           setSelected(null);
         }
 
+
         setDeleteToast(true);
+        setIsDialogOpen(false);
+        setNewMatricula("");
+        setNewContexto("");
+        setIsEditing(false);
+
       })
       .catch((error) => console.error("❌ Erro ao apagar matrícula:", error));
   };
@@ -395,9 +405,10 @@ const marcarComoVisto = (id) => {
 
 
   <CardContent>
-  <Typography variant="h6" fontWeight="bold">
-  {selected.id}
-</Typography>
+  <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: 1, mb: 1 }}>
+  {selected.id.toUpperCase()}
+  </Typography>
+
 
 {selected.cor && (
   <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 1, mt: 1 }}>
@@ -412,9 +423,9 @@ const marcarComoVisto = (id) => {
           border: "1px solid #999"
         }}
       />
-      <Typography variant="caption" color="text.secondary">
-        {selected.cor.charAt(0).toUpperCase() + selected.cor.slice(1)}
-      </Typography>
+    <Typography variant="body2" sx={{ opacity: 0.7, fontStyle: "italic" }}>
+      {selected.cor.charAt(0).toUpperCase() + selected.cor.slice(1)}
+    </Typography>
     </>
   ) : (
     <Typography variant="caption" color="text.secondary">
@@ -425,14 +436,13 @@ const marcarComoVisto = (id) => {
 
 )}
 
-<Typography variant="body1" sx={{ mb: 1 }}>
-  {selected.contexto}
-</Typography>
+    <Typography variant="body1" sx={{ mt: 1, fontSize: "0.95rem", color: "#333" }}>
+      {selected.contexto}
+    </Typography>
 
 
-
-    <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-      Adicionado em:{" "}
+    <Typography variant="caption" sx={{ display: "block", mt: 1, fontSize: "0.75rem", color: "text.secondary" }}>
+    Adicionado em:{" "}
       {new Date(selected.data).toLocaleDateString("pt-PT", {
         weekday: "long",
         day: "2-digit",
@@ -446,11 +456,8 @@ const marcarComoVisto = (id) => {
     </Typography>
 
     {selected.ultima_vista && (
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{ mt: 1, display: "block" }}
-      >
+      <Typography variant="caption" sx={{ display: "block", fontSize: "0.75rem", color: "text.secondary" }}>
+
         Última vez visto:{" "}
         {new Date(selected.ultima_vista).toLocaleDateString("pt-PT", {
           weekday: "long",
@@ -467,64 +474,74 @@ const marcarComoVisto = (id) => {
 
     {/* Botões */}
     <Box
-      sx={{
-        display: "flex",
-        flexWrap: "wrap",
-        justifyContent: "center",
-        gap: 2,
-        mt: 2,
-      }}
-    >
-      {[
-        {
-          label: "VISTO AGORA",
-          color: "success",
-          variant: "contained",
-          onClick: () => marcarComoVisto(selected.id),
-        },
-        {
-          label: "HISTÓRICO",
-          color: "primary",
-          variant: "outlined",
-          onClick: () => fetchHistory(selected.id),
-        },
-        {
-          label: "EDITAR",
-          color: "primary",
-          variant: "outlined",
-          onClick: () => editMatricula(selected),
-        },
-        {
-          label: "APAGAR",
-          color: "error",
-          variant: "outlined",
-          onClick: () => confirmDeleteMatricula(selected.id),
-        },
-      ].map((btn, i) => (
-        <Button
-          key={i}
-          variant={btn.variant}
-          color={btn.color}
-          onClick={btn.onClick}
-          sx={{
-            flex: "1 1 40%",
-            maxWidth: 180,
-            fontSize: "0.9rem",
-            fontWeight: "bold",
-            py: 1.2,
-            transition: "all 0.2s ease-in-out",
-            borderRadius: 2,
-            boxShadow: btn.variant === "contained" ? 2 : "none",
-            "&:hover": {
-              transform: "scale(1.05)",
-              boxShadow: btn.variant === "contained" ? 4 : 2,
-            },
-          }}
-        >
-          {btn.label}
-        </Button>
-      ))}
-    </Box>
+  sx={{
+    display: "flex",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 2,
+    mt: 2,
+  }}
+>
+  {/* Visto Agora */}
+  <Button
+    variant="contained"
+    sx={{
+      backgroundColor: "#386641",
+      color: "white",
+      fontWeight: "bold",
+      textTransform: "uppercase",
+      px: 3,
+      py: 1.5,
+      borderRadius: 2,
+      flex: "1 1 40%",
+      maxWidth: 180,
+      '&:hover': { backgroundColor: "#2a4f31" }
+    }}
+    onClick={() => marcarComoVisto(selected.id)}
+  >
+    Visto Agora
+  </Button>
+
+  {/* Histórico */}
+  <Button
+    variant="contained"
+    sx={{
+      backgroundColor: "#1b263b",
+      color: "white",
+      fontWeight: "bold",
+      textTransform: "uppercase",
+      px: 3,
+      py: 1.5,
+      borderRadius: 2,
+      flex: "1 1 40%",
+      maxWidth: 180,
+      '&:hover': { backgroundColor: "#0d1b2a" }
+    }}
+    onClick={() => fetchHistory(selected.id)}
+  >
+    Histórico
+  </Button>
+
+  {/* Editar - linha completa */}
+  <Button
+    variant="contained"
+    sx={{
+      backgroundColor: "#1b263b",
+      color: "white",
+      fontWeight: "bold",
+      textTransform: "uppercase",
+      px: 3,
+      py: 1.5,
+      borderRadius: 2,
+      width: "100%",
+      '&:hover': { backgroundColor: "#0d1b2a" }
+    }}
+    onClick={() => editMatricula(selected)}
+  >
+    Editar
+  </Button>
+</Box>
+
   </CardContent>
 </Card>
 
@@ -534,27 +551,75 @@ const marcarComoVisto = (id) => {
         </Grow>
       )}
 
-      {/* Botões de Ação */}
+{/* Botões de Ação */}
       <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2, flexWrap: "wrap" }}>
-      <Button
+
+            <Button
         variant="contained"
         startIcon={<Add />}
         onClick={() => {
           if (!isEditing) {
-            setNewMatricula(search); 
+            setNewMatricula(search);
           }
           setIsDialogOpen(true);
+        }}
+        sx={{
+          backgroundColor: "#0d1b2a",
+          color: "white",
+          fontWeight: "bold",
+          textTransform: "uppercase",
+          px: 3,
+          py: 1.5,
+          borderRadius: 2,
+          '&:hover': {
+            backgroundColor: "#1b263b"
+          },
+          minWidth: 160
         }}
       >
         Adicionar
       </Button>
-        <Button variant="contained" color="secondary" startIcon={<ListIcon />} onClick={listarTodas}>
-          Listar Todas
-        </Button>
-        <Button variant="outlined" color="error" onClick={handleLogout} sx={{ position: "absolute", top: 10, right: 10 }}>
+
+      <Button
+        variant="contained"
+        startIcon={<ListIcon />}
+        onClick={listarTodas}
+        sx={{
+          backgroundColor: "#0d1b2a",
+          color: "white",
+          fontWeight: "bold",
+          textTransform: "uppercase",
+          px: 3,
+          py: 1.5,
+          borderRadius: 2,
+          '&:hover': {
+            backgroundColor: "#1b263b"
+          },
+          minWidth: 160
+        }}
+      >
+        Listar Todas
+      </Button>
+
+        <Button
+          variant="outlined"
+          color="error"
+          onClick={handleLogout}
+          sx={{
+            position: "absolute",
+            top: 10,
+            right: 10,
+            fontWeight: "bold",
+            textTransform: "uppercase",
+            borderRadius: 2,
+            px: 2.5,
+            py: 1
+          }}
+        >
           Sair
         </Button>
       </Box>
+
 
       {/* Dialog Adicionar/Editar Matrícula */}
       <Dialog
@@ -576,76 +641,120 @@ const marcarComoVisto = (id) => {
           {isEditing ? "Editar Matrícula" : "Adicionar Matrícula"}
         </DialogTitle>
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <TextField
-            label="Matrícula"
-            fullWidth
-            required
-            value={newMatricula}
-            onChange={(e) => setNewMatricula(e.target.value)}
-            variant="outlined"
-            InputLabelProps={{ shrink: true }}
-            disabled={isEditing}
-          />
-          <TextField
-            label="Observações"
-            fullWidth
-            multiline
-            minRows={2}
-            value={newContexto}
-            onChange={(e) => setNewContexto(e.target.value)}
-            variant="outlined"
-            InputLabelProps={{ shrink: true }}
-          />
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            Cor:
-          </Typography>
-          <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", mt: 1 }}>
-          {["red", "blue", "black", "gray", "silver", "green", "yellow"].map((colorOption) => (
-            <Box
-              key={colorOption}
-              onClick={() => setCor(colorOption)}
-              sx={{
-                width: 32,
-                height: 32,
-                borderRadius: "50%",
-                backgroundColor: colorOption,
-                border: cor === colorOption ? "3px solid #1976d2" : "2px solid #ddd",
-                boxShadow: cor === colorOption ? "0 0 6px #1976d2" : "none",
-                cursor: "pointer",
-                transition: "all 0.2s ease-in-out",
-                "&:hover": {
-                  transform: "scale(1.15)",
-                  boxShadow: "0 0 6px rgba(0, 0, 0, 0.3)"
-                }
-              }}
-            />
-          ))}
-        </Box>
+        <TextField
+          label="Matrícula"
+          fullWidth
+          required
+          value={newMatricula}
+          onChange={(e) => setNewMatricula(e.target.value)}
+          variant="outlined"
+          InputLabelProps={{ shrink: true }}
+          disabled={isEditing}
+        />
+
+        <TextField
+          label="Observações"
+          fullWidth
+          multiline
+          minRows={2}
+          value={newContexto}
+          onChange={(e) => setNewContexto(e.target.value)}
+          variant="outlined"
+          InputLabelProps={{ shrink: true }}
+        />
+
+<Typography variant="body2" sx={{ mt: 2 }}>
+  Cor:
+</Typography>
+
+<Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mt: 1 }}>
+  {["white", "red", "blue", "black", "gray", "silver", "green", "yellow"].map((colorOption) => {
+    const isSelected = cor === colorOption;
+
+    return (
+      <Box
+        key={colorOption}
+        onClick={() => setCor(colorOption)}
+        sx={{
+          width: 36,
+          height: 36,
+          borderRadius: "50%",
+          backgroundColor: colorOption,
+          border: "1.5px solid #ccc",
+          cursor: "pointer",
+          transition: "all 0.2s ease-in-out",
+          outline: isSelected ? `3px solid ${colorOption === "white" ? "#999" : colorOption}` : "none",
+          outlineOffset: 2,
+          "&:hover": {
+            transform: "scale(1.1)",
+          },
+        }}
+      />
+    );
+  })}
+</Box>
 
 
 
-          <Button
-            variant="contained"
-            onClick={addMatricula}
-            sx={{
-              mt: 1,
-              fontWeight: "bold",
-              py: 1.3,
-              fontSize: "1rem",
-              borderRadius: 2,
-              boxShadow: 2,
-              textTransform: "uppercase",
-            }}
-            disabled={loading}
-          >
-            {loading ? "A guardar..." : "Salvar"}
-          </Button>
-        </DialogContent>
+
+        <Button
+  variant="contained"
+  onClick={addMatricula}
+  sx={{
+    mt: 2,
+    fontWeight: "bold",
+    py: 1.3,
+    fontSize: "1rem",
+    borderRadius: 2,
+    boxShadow: 2,
+    textTransform: "uppercase",
+    backgroundColor: "#1b263b",
+    color: "white",
+    '&:hover': { backgroundColor: "#0d1b2a" }
+  }}
+  disabled={loading}
+>
+  {loading ? "A guardar..." : "Salvar"}
+</Button>
+
+{isEditing && (
+  <Button
+    variant="contained"
+    color="error"
+    onClick={() => confirmDeleteMatricula(newMatricula)}
+    sx={{
+      mt: 1.5,
+      fontWeight: "bold",
+      py: 1.3,
+      fontSize: "1rem",
+      borderRadius: 2,
+      textTransform: "uppercase",
+      backgroundColor: "#d00000",
+      color: "white",
+      '&:hover': { backgroundColor: "#a80000" }
+    }}
+  >
+    Apagar
+  </Button>
+)}
+
+</DialogContent>
+
 
       </Dialog>
 {/* Dialog para Listar Matrículas */}
 <Dialog open={isListOpen} onClose={() => setIsListOpen(false)} fullWidth maxWidth="sm">
-  <DialogTitle>Lista de Matrículas</DialogTitle>
+    <DialogTitle
+      sx={{
+        fontSize: "1.4rem",
+        fontWeight: "bold",
+        textAlign: "center",
+        letterSpacing: 0.5,
+        color: "#1b263b"
+      }}
+    >
+      Lista de Matrículas
+    </DialogTitle>
   <DialogContent>
     <Box sx={{ overflowX: "auto" }}>
       <List sx={{ p: 0 }}>
@@ -658,106 +767,125 @@ const marcarComoVisto = (id) => {
                 sx={{
                   mb: 2,
                   p: 2,
-                  boxShadow: 3,
                   borderRadius: 3,
+                  boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
                   cursor: "pointer",
                   backgroundColor: isGreenHighlight
                     ? "#e6f4ea"
                     : isRedHighlight
                     ? "#fbeaea"
-                    : "white",
-                  transition: "background 0.2s ease-in-out",
+                    : "#fcfcfc",
+                  border: "1px solid #e0e0e0",
+                  transition: "all 0.2s ease-in-out",
                   "&:hover": {
+                    boxShadow: "0 6px 16px rgba(0,0,0,0.12)",
                     backgroundColor: isGreenHighlight
-                      ? "#d4ecdd"
+                      ? "#d2ebd9"
                       : isRedHighlight
-                      ? "#f5d7d7"
-                      : "#f9f9f9"
+                      ? "#f4dcdc"
+                      : "#f7f7f7"
                   }
                 }}
-                onClick={() => {
-                  handleSelect(m);
-                  setIsListOpen(false);
-                }}              >
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <Box sx={{ textAlign: "left" }}>
-                  <Typography variant="h6" fontWeight="bold">{m.id}</Typography>
-                  {m.cor && (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-                  <Box
-                    sx={{
-                      width: 14,
-                      height: 14,
-                      borderRadius: "50%",
-                      backgroundColor: m.cor,
-                      border: "1px solid #999"
-                    }}
-                  />
-                  <Typography variant="caption" color="text.secondary">
-                    {m.cor.charAt(0).toUpperCase() + m.cor.slice(1)}
-                  </Typography>
-                </Box>
-              )}
-
-
-                {m.contexto && (
-                  <Typography sx={{ mb: 0.5 }}>{m.contexto}</Typography>
-                )}
-                  {m.data && (
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      Adicionado em: {new Date(m.data).toLocaleDateString("pt-PT", {
-                        weekday: "long",
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "2-digit"
-                      })}, às {new Date(m.data).toLocaleTimeString("pt-PT", {
-                        hour: "2-digit",
-                        minute: "2-digit"
-                      })}
+                      onClick={() => {
+                        handleSelect(m);
+                        setIsListOpen(false);
+                      }}              >
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <Box sx={{ textAlign: "left" }}>
+                      <Typography variant="h6" fontWeight="bold" sx={{ fontSize: "1.1rem", color: "#1b263b", letterSpacing: 0.5 }}>
+                          {m.id.toUpperCase()}
+                        </Typography>
+                        {m.cor && (
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                        <Box
+                          sx={{
+                            width: 14,
+                            height: 14,
+                            borderRadius: "50%",
+                            backgroundColor: m.cor,
+                            border: "1px solid #999"
+                          }}
+                        />
+                    <Typography variant="caption" sx={{ color: "#444", fontStyle: "italic" }}>
+                      {m.cor.charAt(0).toUpperCase() + m.cor.slice(1)}
                     </Typography>
-                  )}
-                  {m.ultima_vista && (
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      display="block"
-                      sx={{ mt: 0.5 }}
+
+                      </Box>
+                    )}
+
+
+                      {m.contexto && (
+                        <Typography variant="body2" sx={{ color: "#444", mt: 0.5 }}>
+                        {m.contexto}
+                      </Typography>
+                      )}
+                        {m.data && (
+                          <Typography variant="caption" sx={{ fontSize: "0.75rem", color: "#888", mt: 0.5 }}>
+                          Adicionado em: {new Date(m.data).toLocaleDateString("pt-PT", {
+                              weekday: "long",
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "2-digit"
+                            })}, às {new Date(m.data).toLocaleTimeString("pt-PT", {
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            })}
+                          </Typography>
+                        )}
+                        {m.ultima_vista && (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            display="block"
+                            sx={{ mt: 0.5 }}
+                          >
+                            Última vez visto: {new Date(m.ultima_vista).toLocaleDateString("pt-PT", {
+                              weekday: "long",
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "2-digit"
+                            })}, às {new Date(m.ultima_vista).toLocaleTimeString("pt-PT", {
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            })}
+                          </Typography>
+                        )}
+                      </Box>
+
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                    <IconButton
+                      onClick={(e) => { e.stopPropagation(); editMatricula(m); }}
+                      sx={{
+                        p: 1,
+                        transition: "all 0.2s ease-in-out",
+                        color: "#1b263b", // azul escuro
+                        "&:hover": {
+                          transform: "scale(1.15)",
+                          backgroundColor: "#f0f4f8"
+                        }
+                      }}
                     >
-                      Última vez visto: {new Date(m.ultima_vista).toLocaleDateString("pt-PT", {
-                        weekday: "long",
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "2-digit"
-                      })}, às {new Date(m.ultima_vista).toLocaleTimeString("pt-PT", {
-                        hour: "2-digit",
-                        minute: "2-digit"
-                      })}
-                    </Typography>
-                  )}
-                </Box>
+                      <Edit fontSize="small" />
+                    </IconButton>
 
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                  <IconButton
-                    color="primary"
-                    onClick={(e) => { e.stopPropagation(); editMatricula(m); }}
-                  >
-                    <Edit />
-                  </IconButton>
-                  <IconButton
-                    color="error"
-                    onClick={(e) => { e.stopPropagation(); confirmDeleteMatricula(m.id); }}
-                  >
-                    <Delete />
-                  </IconButton>
-                  <IconButton
-                    color="info"
-                    onClick={(e) => { e.stopPropagation(); mostrarHistorico(m.id); }}
-                  >
-                    📜
-                  </IconButton>
-                </Box>
-              </Box>
-            </Card>
+                    <IconButton
+                      onClick={(e) => { e.stopPropagation(); mostrarHistorico(m.id); }}
+                      sx={{
+                        p: 1,
+                        transition: "all 0.2s ease-in-out",
+                        color: "#1b263b", // também preto/azul escuro
+                        "&:hover": {
+                          transform: "scale(1.15)",
+                          backgroundColor: "#f0f4f8"
+                        }
+                      }}
+                    >
+                      <History fontSize="small" />
+                    </IconButton>
+                  </Box>
+
+                    </Box>
+                  </Card>
           );
         })}
       </List>
@@ -767,14 +895,51 @@ const marcarComoVisto = (id) => {
 
       {/* Dialog para Confirmar Apagar */}
       <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Queres apagar a matrícula?</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
-            <Button variant="contained" color="error" onClick={deleteMatricula}>Sim</Button>
-            <Button variant="contained" onClick={() => setDeleteConfirmOpen(false)}>Não</Button>
-          </Box>
-        </DialogContent>
-      </Dialog>
+  <DialogTitle>Queres apagar a matrícula?</DialogTitle>
+  <DialogContent>
+    <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
+      <Button
+        variant="contained"
+        color="error"
+        onClick={deleteMatricula}
+        sx={{
+          fontWeight: "bold",
+          textTransform: "uppercase",
+          px: 3,
+          py: 1.3,
+          borderRadius: 2,
+          backgroundColor: "#d00000",
+          color: "white",
+          '&:hover': {
+            backgroundColor: "#a60000"
+          }
+        }}
+      >
+        Sim
+      </Button>
+
+      <Button
+        variant="contained"
+        onClick={() => setDeleteConfirmOpen(false)}
+        sx={{
+          backgroundColor: "#0d1b2a",
+          color: "white",
+          fontWeight: "bold",
+          textTransform: "uppercase",
+          px: 3,
+          py: 1.3,
+          borderRadius: 2,
+          '&:hover': {
+            backgroundColor: "#1b263b"
+          }
+        }}
+      >
+        Não
+      </Button>
+    </Box>
+  </DialogContent>
+</Dialog>
+
 
       {/* Dialog para ver Histórico */}
 
