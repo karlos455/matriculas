@@ -137,8 +137,6 @@ function MatriculaSearch({ handleLogout }) {
   const [loading, setLoading] = useState(false);
   const [deleteToast, setDeleteToast] = useState(false);
   const [successSeenToast, setSuccessSeenToast] = useState(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [history, setHistory] = useState([]);
   const [historicoOpen, setHistoricoOpen] = useState(false);
   const [historicoAtual, setHistoricoAtual] = useState([]);
   const [matriculaEmFoco, setMatriculaEmFoco] = useState(null);
@@ -146,27 +144,53 @@ function MatriculaSearch({ handleLogout }) {
   const [highlightCard, setHighlightCard] = useState(false);
   const isGreenHighlight = selected?.contexto?.includes("✅");
   const isRedHighlight = selected?.contexto?.includes("⛔️");
+  const hasLocation =
+    Number.isFinite(selected?.latitude) && Number.isFinite(selected?.longitude);
+  const googleMapsLink = hasLocation
+    ? `https://www.google.com/maps?q=${selected?.latitude},${selected?.longitude}`
+    : null;
+  const appleMapsLink = hasLocation
+    ? `https://maps.apple.com/?ll=${selected?.latitude},${selected?.longitude}`
+    : null;
   const [cor, setCor] = useState(""); 
   const [estadoCartao, setEstadoCartao] = useState("normal");
 
-  const mostrarHistorico = (id) => {
-    fetch(`${API_URL}/${id.toLowerCase()}/historico`)
-      .then((res) => res.json())
-      .then((data) => {
-        setHistoricoAtual(data);
-        setMatriculaEmFoco(id);
-        setHistoricoOpen(true);
-      })
-      .catch((err) => console.error("❌ Erro ao buscar histórico:", err));
-  };
-  
+  const requestCurrentLocation = () =>
+    new Promise((resolve) => {
+      if (typeof navigator === "undefined" || !navigator.geolocation) {
+        resolve(null);
+        return;
+      }
 
-  const fetchHistory = (id) => {
-    fetch(`${API_URL}/${id}/historico`)
-      .then((res) => res.json())
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.warn("⚠️ Não foi possível obter a localização atual:", error);
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    });
+
+  const abrirHistorico = (id) => {
+    if (!id) return;
+
+    const idFormatado = id.toLowerCase();
+
+    fetch(`${API_URL}/${idFormatado}/historico`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Erro ao buscar histórico");
+        return res.json();
+      })
       .then((data) => {
-        setHistory(data);
-        setIsHistoryOpen(true);
+        setHistoricoAtual(Array.isArray(data) ? data : []);
+        setMatriculaEmFoco(id.toUpperCase());
+        setHistoricoOpen(true);
       })
       .catch((err) => console.error("❌ Erro ao buscar histórico:", err));
   };
@@ -231,11 +255,10 @@ const marcarComoVisto = (id) => {
 
 
   // **Adicionar matrícula**
-  const addMatricula = () => {
+  const addMatricula = async () => {
     const idNormalizado = newMatricula.trim().toLowerCase();
     if (!idNormalizado) return;
 
-    // Verifica duplicados com id normalizado
     if (!isEditing && matriculas.some((m) => m.id.toLowerCase() === idNormalizado)) {
       setAlertOpen(true);
       return;
@@ -245,43 +268,74 @@ const marcarComoVisto = (id) => {
 
     if (estadoCartao === "verde") contextoFinal = `✅ ${contextoFinal}`;
     else if (estadoCartao === "vermelho") contextoFinal = `⛔️ ${contextoFinal}`;
-    
-    const novaMatricula = { id: idNormalizado, contexto: contextoFinal, cor };
-    
+
     const method = isEditing ? "PUT" : "POST";
     const url = isEditing ? `${API_URL}/${matriculaOriginal.toLowerCase()}` : API_URL;
 
     setLoading(true);
 
-    fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(novaMatricula),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Erro ao guardar matrícula");
-        return res.json();
-      })
-      .then((updatedMatricula) => {
-        fetchMatriculas();
-        setNewMatricula("");
-        setNewContexto("");
-        setIsDialogOpen(false);
+    try {
+      let locationPayload = { latitude: null, longitude: null };
 
-        if (isEditing && selected?.id === matriculaOriginal) {
-          setSelected(updatedMatricula);
+      if (isEditing) {
+        const original = matriculas.find(
+          (m) => m.id.toLowerCase() === matriculaOriginal.toLowerCase()
+        );
+        locationPayload = {
+          latitude: original?.latitude ?? null,
+          longitude: original?.longitude ?? null,
+        };
+      } else {
+        const coords = await requestCurrentLocation();
+        if (coords) {
+          locationPayload = coords;
         }
+      }
 
+      const novaMatricula = {
+        id: idNormalizado,
+        contexto: contextoFinal,
+        cor,
+        latitude: locationPayload.latitude,
+        longitude: locationPayload.longitude,
+      };
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(novaMatricula),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro ao guardar matrícula");
+      }
+
+      const updatedMatricula = await response.json();
+
+      fetchMatriculas();
+      setNewMatricula("");
+      setNewContexto("");
+      setIsDialogOpen(false);
+
+      if (
+        isEditing &&
+        selected?.id?.toLowerCase() === matriculaOriginal.toLowerCase()
+      ) {
         setSelected(updatedMatricula);
+      }
 
-        if (isEditing) {
-          setSuccessToast(true);
-        } else {
-          setSuccessAddedToast(true);
-        }        
-      })
-      .catch((error) => console.error("❌ Erro ao guardar matrícula:", error))
-      .finally(() => setLoading(false));
+      setSelected(updatedMatricula);
+
+      if (isEditing) {
+        setSuccessToast(true);
+      } else {
+        setSuccessAddedToast(true);
+      }
+    } catch (error) {
+      console.error("❌ Erro ao guardar matrícula:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ------- //
@@ -460,6 +514,61 @@ const marcarComoVisto = (id) => {
             {selected.contexto?.replace(/✅|⛔️/g, "").trim()}
           </Typography>
 
+  {hasLocation && (
+    <Box sx={{ mt: 2 }}>
+      <Typography
+        variant="caption"
+        sx={{ display: "block", color: "text.secondary", mb: 1, textTransform: "uppercase", letterSpacing: 0.5 }}
+      >
+        Localização guardada
+      </Typography>
+      <Box
+        sx={{
+          borderRadius: 2,
+          overflow: "hidden",
+          border: "1px solid rgba(0,0,0,0.12)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+        }}
+      >
+        <iframe
+          title={`Mapa da matrícula ${selected.id}`}
+          src={`https://maps.google.com/maps?q=${selected.latitude},${selected.longitude}&z=16&output=embed`}
+          width="100%"
+          height="220"
+          style={{ border: 0 }}
+          loading="lazy"
+          allowFullScreen
+        />
+      </Box>
+      <Box sx={{ display: "flex", justifyContent: "center", gap: 1.5, mt: 1.5, flexWrap: "wrap" }}>
+        {googleMapsLink && (
+          <Button
+            component="a"
+            href={googleMapsLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="text"
+            sx={{ textTransform: "none", fontWeight: 600 }}
+          >
+            Abrir no Google Maps
+          </Button>
+        )}
+        {appleMapsLink && (
+          <Button
+            component="a"
+            href={appleMapsLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="text"
+            sx={{ textTransform: "none", fontWeight: 600 }}
+          >
+            Abrir no Apple Maps
+          </Button>
+        )}
+      </Box>
+    </Box>
+  )}
+
 
 
     <Typography variant="caption" sx={{ display: "block", mt: 1, fontSize: "0.75rem", color: "text.secondary" }}>
@@ -538,7 +647,7 @@ const marcarComoVisto = (id) => {
       maxWidth: 180,
       '&:hover': { backgroundColor: "#0d1b2a" }
     }}
-    onClick={() => fetchHistory(selected.id)}
+    onClick={() => abrirHistorico(selected.id)}
   >
     Histórico
   </Button>
@@ -954,7 +1063,7 @@ const marcarComoVisto = (id) => {
                     </IconButton>
 
                     <IconButton
-                      onClick={(e) => { e.stopPropagation(); mostrarHistorico(m.id); }}
+                      onClick={(e) => { e.stopPropagation(); abrirHistorico(m.id); }}
                       sx={{
                         p: 1,
                         transition: "all 0.2s ease-in-out",
@@ -1028,8 +1137,17 @@ const marcarComoVisto = (id) => {
 
       {/* Dialog para ver Histórico */}
 
-      <Dialog open={historicoOpen} onClose={() => setHistoricoOpen(false)} fullWidth maxWidth="sm">
-  <DialogTitle>Histórico de visualizações - {matriculaEmFoco}</DialogTitle>
+      <Dialog
+        open={historicoOpen}
+        onClose={() => {
+          setHistoricoOpen(false);
+          setHistoricoAtual([]);
+          setMatriculaEmFoco(null);
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+  <DialogTitle>Histórico de visualizações - {matriculaEmFoco || ""}</DialogTitle>
   <DialogContent>
     {historicoAtual.length === 0 ? (
       <Typography variant="body2" color="text.secondary">Sem histórico disponível.</Typography>
@@ -1054,40 +1172,6 @@ const marcarComoVisto = (id) => {
     )}
   </DialogContent>
 </Dialog>
-
-
-       {/* Dialog para mostrar histórico de visualizacoes */}
-
-      <Dialog open={isHistoryOpen} onClose={() => setIsHistoryOpen(false)} fullWidth maxWidth="sm">
-  <DialogTitle>Histórico de visualizações</DialogTitle>
-  <DialogContent>
-    {history.length === 0 ? (
-      <Typography variant="body2" color="text.secondary">
-        Ainda sem histórico.
-      </Typography>
-    ) : (
-      <List>
-        {history.map((visto, index) => (
-          <ListItem key={index}>
-            <ListItemText
-              primary={`Visto em: ${new Date(visto.data).toLocaleDateString("pt-PT", {
-                weekday: "long",
-                day: "2-digit",
-                month: "2-digit",
-                year: "2-digit",
-              })}, às ${new Date(visto.data).toLocaleTimeString("pt-PT", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}`}
-            />
-          </ListItem>
-        ))}
-      </List>
-    )}
-  </DialogContent>
-</Dialog>
-
-
 
 
       {/* Snackbar de sucesso - matrícula apagada */}
@@ -1155,11 +1239,10 @@ const marcarComoVisto = (id) => {
 
       {/* Footer */}
       <Box sx={{ mt: 4, textAlign: "center", fontSize: "0.8rem", color: "text.secondary" }}>
-        © Carlos Santos · versão 1.7
+        © Carlos Santos · versão 2.0
       </Box>
             
     </Box>
     
   );
 }
-

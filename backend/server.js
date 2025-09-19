@@ -42,9 +42,19 @@ async function initDB() {
         contexto TEXT,
         cor TEXT,
         data TIMESTAMP DEFAULT NOW(),
-        ultima_vista TIMESTAMP
+        ultima_vista TIMESTAMP,
+        latitude DOUBLE PRECISION,
+        longitude DOUBLE PRECISION
       );
     `);
+
+    await pool.query(
+      "ALTER TABLE matriculas ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION"
+    );
+
+    await pool.query(
+      "ALTER TABLE matriculas ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION"
+    );
     console.log("Tabela 'matriculas' verificada/criada com sucesso!");
   } catch (error) {
     console.error("Erro ao criar tabela:", error);
@@ -117,15 +127,27 @@ app.get("/matriculas", async (req, res) => {
 // 🟢 Adicionar uma nova matrícula
 app.post("/matriculas", async (req, res) => {
   try {
-    const { id, contexto, cor } = req.body;
+    const { id, contexto, cor, latitude, longitude } = req.body;
 
     if (!id) {
       return res.status(400).json({ error: "O campo matrícula é obrigatório" });
     }
 
+    const normalizedLatitude =
+      typeof latitude === "number" ? latitude : parseFloat(latitude);
+    const normalizedLongitude =
+      typeof longitude === "number" ? longitude : parseFloat(longitude);
+
+    const finalLatitude = Number.isFinite(normalizedLatitude)
+      ? normalizedLatitude
+      : null;
+    const finalLongitude = Number.isFinite(normalizedLongitude)
+      ? normalizedLongitude
+      : null;
+
     const newMatricula = await pool.query(
-      "INSERT INTO matriculas (id, contexto, cor) VALUES ($1, $2, $3) RETURNING *",
-      [id.toLowerCase(), contexto, cor]
+      "INSERT INTO matriculas (id, contexto, cor, latitude, longitude) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [id.toLowerCase(), contexto, cor, finalLatitude, finalLongitude]
     );
     
     res.json(newMatricula.rows[0]);
@@ -157,11 +179,23 @@ app.put("/matriculas/:id", async (req, res) => {
 
   try {
     const oldId = req.params.id.toLowerCase();
-    const { id: newId, contexto, cor } = req.body;
+    const { id: newId, contexto, cor, latitude, longitude } = req.body;
+
+    const normalizedLatitude =
+      typeof latitude === "number" ? latitude : parseFloat(latitude);
+    const normalizedLongitude =
+      typeof longitude === "number" ? longitude : parseFloat(longitude);
 
     const result = await pool.query(
-      "UPDATE matriculas SET id = $1, contexto = $2, cor = $3 WHERE LOWER(id) = $4 RETURNING *",
-      [newId.toLowerCase(), contexto, cor, oldId]
+      "UPDATE matriculas SET id = $1, contexto = $2, cor = $3, latitude = COALESCE($4, latitude), longitude = COALESCE($5, longitude) WHERE LOWER(id) = $6 RETURNING *",
+      [
+        newId.toLowerCase(),
+        contexto,
+        cor,
+        Number.isFinite(normalizedLatitude) ? normalizedLatitude : null,
+        Number.isFinite(normalizedLongitude) ? normalizedLongitude : null,
+        oldId,
+      ]
     );
    
     if (result.rowCount === 0) {
