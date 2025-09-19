@@ -115,7 +115,9 @@ app.get("/matriculas/:id/historico", async (req, res) => {
 // 🟢 Obter todas as matrículas
 app.get("/matriculas", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM matriculas");
+    const result = await pool.query(
+      "SELECT * FROM matriculas ORDER BY data DESC"
+    );
     res.json(result.rows);
   } catch (err) {
     console.error(err.message);
