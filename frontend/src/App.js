@@ -232,25 +232,75 @@ function MatriculaSearch({ handleLogout }) {
 
 
   // **Marcar como visto por último**
-const marcarComoVisto = (id) => {
-  const idFormatado = id.toLowerCase();
+  const marcarComoVisto = async (id) => {
+    const idFormatado = id.toLowerCase();
+    const matriculaAtual =
+      matriculas.find((m) => m.id.toLowerCase() === idFormatado) || selected;
 
-  fetch(`${API_URL}/${idFormatado}/visto`, {
-    method: "PUT"
-  })
-    .then((res) => {
-      if (!res.ok) throw new Error("Erro ao marcar como visto");
-      return res.json();
-    })
-    .then((data) => {
+    const temLocalizacao =
+      Number.isFinite(matriculaAtual?.latitude) &&
+      Number.isFinite(matriculaAtual?.longitude);
+
+    if (!temLocalizacao && matriculaAtual) {
+      try {
+        const coords = await requestCurrentLocation();
+
+        if (coords) {
+          const response = await fetch(`${API_URL}/${idFormatado}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: matriculaAtual?.id?.toLowerCase() || idFormatado,
+              contexto: matriculaAtual?.contexto ?? null,
+              cor: matriculaAtual?.cor ?? null,
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error("Erro ao atualizar localização");
+          }
+
+          const dadosComLocalizacao = await response.json();
+
+          setMatriculas((prev) =>
+            prev.map((m) =>
+              m.id.toLowerCase() === idFormatado ? dadosComLocalizacao : m
+            )
+          );
+
+          if (selected?.id.toLowerCase() === idFormatado) {
+            setSelected(dadosComLocalizacao);
+          }
+        }
+      } catch (error) {
+        console.error("❌ Erro ao atualizar localização:", error);
+      }
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/${idFormatado}/visto`, {
+        method: "PUT",
+      });
+
+      if (!res.ok) {
+        throw new Error("Erro ao marcar como visto");
+      }
+
+      const data = await res.json();
+
       fetchMatriculas();
+
       if (selected?.id.toLowerCase() === idFormatado) {
         setSelected(data);
       }
+
       setSuccessSeenToast(true);
-    })
-    .catch((err) => console.error("❌ Erro ao atualizar visto:", err));
-};
+    } catch (err) {
+      console.error("❌ Erro ao atualizar visto:", err);
+    }
+  };
 
 
 
