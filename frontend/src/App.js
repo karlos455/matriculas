@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   TextField, Button, Card, CardContent, Dialog, DialogTitle, DialogContent,
   List, ListItem, ListItemButton, ListItemText, Typography, Box,
-  IconButton, Snackbar, Alert
+  IconButton, Snackbar, Alert, Link
 } from "@mui/material";
 import { Add, List as ListIcon, Delete } from "@mui/icons-material";
 import { Edit } from "@mui/icons-material";
@@ -1177,6 +1177,27 @@ function MatriculaSearch({ handleLogout }) {
           const hasCoordenadas =
             Number.isFinite(latitudeNumber) && Number.isFinite(longitudeNumber);
 
+          let secondaryContent = "Localização não disponível";
+
+          if (hasCoordenadas) {
+            const googleMapsLink = `https://www.google.com/maps?q=${latitudeNumber},${longitudeNumber}`;
+            const addressText = item.address?.trim();
+            const linkLabel = addressText && addressText.length > 0
+              ? addressText
+              : `Ver no Google Maps (${latitudeNumber.toFixed(6)}, ${longitudeNumber.toFixed(6)})`;
+
+            secondaryContent = (
+              <Link
+                href={googleMapsLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                underline="hover"
+              >
+                {linkLabel}
+              </Link>
+            );
+          }
+
           return (
             <ListItem key={index}>
               <ListItemText
@@ -1189,11 +1210,7 @@ function MatriculaSearch({ handleLogout }) {
                   hour: "2-digit",
                   minute: "2-digit"
                 })}`}
-                secondary={
-                  hasCoordenadas
-                    ? `Localização: ${latitudeNumber.toFixed(6)}, ${longitudeNumber.toFixed(6)}`
-                    : "Localização não disponível"
-                }
+                secondary={secondaryContent}
               />
             </ListItem>
           );

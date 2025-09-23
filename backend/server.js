@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
+const https = require("https");
+const { URLSearchParams } = require("url");
 const pool = require("./db");
 const app = express();
 
@@ -62,7 +64,8 @@ async function initDB() {
         matricula_id TEXT REFERENCES matriculas(id) ON DELETE CASCADE,
         data TIMESTAMP DEFAULT NOW(),
         latitude DOUBLE PRECISION,
-        longitude DOUBLE PRECISION
+        longitude DOUBLE PRECISION,
+        address TEXT
       );
     `);
 
@@ -73,6 +76,10 @@ async function initDB() {
     await pool.query(
       "ALTER TABLE historico_vistos ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION"
     );
+
+    await pool.query(
+      "ALTER TABLE historico_vistos ADD COLUMN IF NOT EXISTS address TEXT"
+    );
     console.log("Tabela 'matriculas' verificada/criada com sucesso!");
   } catch (error) {
     console.error("Erro ao criar tabela:", error);
@@ -80,6 +87,67 @@ async function initDB() {
 }
 
 initDB();
+
+
+async function reverseGeocode(lat, lon) {
+  const latitude = Number(lat);
+  const longitude = Number(lon);
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    format: "jsonv2",
+    lat: latitude.toString(),
+    lon: longitude.toString(),
+    zoom: "18",
+    addressdetails: "1",
+  });
+
+  const options = {
+    hostname: "nominatim.openstreetmap.org",
+    path: `/reverse?${params.toString()}`,
+    headers: {
+      "User-Agent": "matricula-app/1.0 (+https://matriculas.casadocarlos.info)",
+      "Accept-Language": "pt-PT",
+    },
+  };
+
+  return new Promise((resolve) => {
+    const request = https.get(options, (response) => {
+      let data = "";
+
+      response.on("data", (chunk) => {
+        data += chunk;
+      });
+
+      response.on("end", () => {
+        if (response.statusCode !== 200) {
+          return resolve(null);
+        }
+
+        try {
+          const parsed = JSON.parse(data);
+          resolve(parsed?.display_name ?? null);
+        } catch (err) {
+          console.warn("⚠️ Erro ao interpretar resposta do reverse geocode:", err);
+          resolve(null);
+        }
+      });
+    });
+
+    request.on("error", (error) => {
+      console.warn("⚠️ Erro na chamada de reverse geocode:", error);
+      resolve(null);
+    });
+
+    request.setTimeout(5000, () => {
+      request.destroy();
+      resolve(null);
+    });
+  });
+}
 
 
 // Adicionar matricula como vista
@@ -102,6 +170,16 @@ app.put("/matriculas/:id/visto", async (req, res) => {
       ? normalizedLongitude
       : null;
 
+    let address = null;
+
+    if (finalLatitude !== null && finalLongitude !== null) {
+      try {
+        address = await reverseGeocode(finalLatitude, finalLongitude);
+      } catch (error) {
+        console.warn("⚠️ Erro ao obter endereço para o histórico:", error);
+      }
+    }
+
     // Atualiza a última vista
     const updateResult = await pool.query(
       "UPDATE matriculas SET ultima_vista = $1, latitude = COALESCE($2, latitude), longitude = COALESCE($3, longitude) WHERE LOWER(id) = $4 RETURNING *",
@@ -114,8 +192,8 @@ app.put("/matriculas/:id/visto", async (req, res) => {
 
     // Insere no histórico
     await pool.query(
-      "INSERT INTO historico_vistos (matricula_id, data, latitude, longitude) VALUES ($1, $2, $3, $4)",
-      [id, now, finalLatitude, finalLongitude]
+      "INSERT INTO historico_vistos (matricula_id, data, latitude, longitude, address) VALUES ($1, $2, $3, $4, $5)",
+      [id, now, finalLatitude, finalLongitude, address]
     );
 
     res.json(updateResult.rows[0]);
