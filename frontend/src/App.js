@@ -234,54 +234,22 @@ function MatriculaSearch({ handleLogout }) {
   // **Marcar como visto por último**
   const marcarComoVisto = async (id) => {
     const idFormatado = id.toLowerCase();
-    const matriculaAtual =
-      matriculas.find((m) => m.id.toLowerCase() === idFormatado) || selected;
+    let coords = null;
 
-    const temLocalizacao =
-      Number.isFinite(matriculaAtual?.latitude) &&
-      Number.isFinite(matriculaAtual?.longitude);
-
-    if (!temLocalizacao && matriculaAtual) {
-      try {
-        const coords = await requestCurrentLocation();
-
-        if (coords) {
-          const response = await fetch(`${API_URL}/${idFormatado}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: matriculaAtual?.id?.toLowerCase() || idFormatado,
-              contexto: matriculaAtual?.contexto ?? null,
-              cor: matriculaAtual?.cor ?? null,
-              latitude: coords.latitude,
-              longitude: coords.longitude,
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error("Erro ao atualizar localização");
-          }
-
-          const dadosComLocalizacao = await response.json();
-
-          setMatriculas((prev) =>
-            prev.map((m) =>
-              m.id.toLowerCase() === idFormatado ? dadosComLocalizacao : m
-            )
-          );
-
-          if (selected?.id.toLowerCase() === idFormatado) {
-            setSelected(dadosComLocalizacao);
-          }
-        }
-      } catch (error) {
-        console.error("❌ Erro ao atualizar localização:", error);
-      }
+    try {
+      coords = await requestCurrentLocation();
+    } catch (error) {
+      console.error("❌ Erro ao obter localização atual:", error);
     }
 
     try {
       const res = await fetch(`${API_URL}/${idFormatado}/visto`, {
         method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          latitude: coords?.latitude ?? null,
+          longitude: coords?.longitude ?? null,
+        }),
       });
 
       if (!res.ok) {
@@ -1203,21 +1171,33 @@ function MatriculaSearch({ handleLogout }) {
       <Typography variant="body2" color="text.secondary">Sem histórico disponível.</Typography>
     ) : (
       <List>
-        {historicoAtual.map((item, index) => (
-          <ListItem key={index}>
-            <ListItemText
-              primary={`Vista em: ${new Date(item.data).toLocaleDateString("pt-PT", {
-                weekday: "long",
-                day: "2-digit",
-                month: "2-digit",
-                year: "2-digit"
-              })}, às ${new Date(item.data).toLocaleTimeString("pt-PT", {
-                hour: "2-digit",
-                minute: "2-digit"
-              })}`}
-            />
-          </ListItem>
-        ))}
+        {historicoAtual.map((item, index) => {
+          const latitudeNumber = Number(item.latitude);
+          const longitudeNumber = Number(item.longitude);
+          const hasCoordenadas =
+            Number.isFinite(latitudeNumber) && Number.isFinite(longitudeNumber);
+
+          return (
+            <ListItem key={index}>
+              <ListItemText
+                primary={`Vista em: ${new Date(item.data).toLocaleDateString("pt-PT", {
+                  weekday: "long",
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "2-digit"
+                })}, às ${new Date(item.data).toLocaleTimeString("pt-PT", {
+                  hour: "2-digit",
+                  minute: "2-digit"
+                })}`}
+                secondary={
+                  hasCoordenadas
+                    ? `Localização: ${latitudeNumber.toFixed(6)}, ${longitudeNumber.toFixed(6)}`
+                    : "Localização não disponível"
+                }
+              />
+            </ListItem>
+          );
+        })}
       </List>
     )}
   </DialogContent>

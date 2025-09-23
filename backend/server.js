@@ -55,6 +55,24 @@ async function initDB() {
     await pool.query(
       "ALTER TABLE matriculas ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION"
     );
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS historico_vistos (
+        id SERIAL PRIMARY KEY,
+        matricula_id TEXT REFERENCES matriculas(id) ON DELETE CASCADE,
+        data TIMESTAMP DEFAULT NOW(),
+        latitude DOUBLE PRECISION,
+        longitude DOUBLE PRECISION
+      );
+    `);
+
+    await pool.query(
+      "ALTER TABLE historico_vistos ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION"
+    );
+
+    await pool.query(
+      "ALTER TABLE historico_vistos ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION"
+    );
     console.log("Tabela 'matriculas' verificada/criada com sucesso!");
   } catch (error) {
     console.error("Erro ao criar tabela:", error);
@@ -70,11 +88,24 @@ app.put("/matriculas/:id/visto", async (req, res) => {
   try {
     const id = req.params.id.toLowerCase();
     const now = new Date();
+    const { latitude, longitude } = req.body || {};
+
+    const normalizedLatitude =
+      typeof latitude === "number" ? latitude : parseFloat(latitude);
+    const normalizedLongitude =
+      typeof longitude === "number" ? longitude : parseFloat(longitude);
+
+    const finalLatitude = Number.isFinite(normalizedLatitude)
+      ? normalizedLatitude
+      : null;
+    const finalLongitude = Number.isFinite(normalizedLongitude)
+      ? normalizedLongitude
+      : null;
 
     // Atualiza a última vista
     const updateResult = await pool.query(
-      "UPDATE matriculas SET ultima_vista = $1 WHERE LOWER(id) = $2 RETURNING *",
-      [now, id]
+      "UPDATE matriculas SET ultima_vista = $1, latitude = COALESCE($2, latitude), longitude = COALESCE($3, longitude) WHERE LOWER(id) = $4 RETURNING *",
+      [now, finalLatitude, finalLongitude, id]
     );
 
     if (updateResult.rowCount === 0) {
@@ -83,8 +114,8 @@ app.put("/matriculas/:id/visto", async (req, res) => {
 
     // Insere no histórico
     await pool.query(
-      "INSERT INTO historico_vistos (matricula_id, data) VALUES ($1, $2)",
-      [id, now]
+      "INSERT INTO historico_vistos (matricula_id, data, latitude, longitude) VALUES ($1, $2, $3, $4)",
+      [id, now, finalLatitude, finalLongitude]
     );
 
     res.json(updateResult.rows[0]);
