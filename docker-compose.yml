@@ -17,6 +17,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   backend:
+    image: matricula-app_backend
     build: ./backend
     container_name: backend-matriculas
     restart: always
@@ -36,6 +37,7 @@ services:
       - ./blocked.log:/app/blocked.log
 
   frontend:
+    image: matricula-app_frontend
     build:
       context: ./frontend
       args:
