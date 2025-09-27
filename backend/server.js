@@ -2,9 +2,101 @@ require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const https = require("https");
+const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
 const { URLSearchParams } = require("url");
 const pool = require("./db");
 const app = express();
+
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const IS_AUTH_CONFIGURED = typeof ADMIN_PASSWORD === "string" && ADMIN_PASSWORD.length > 0;
+const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas
+const sessions = new Map();
+const loginAttempts = new Map();
+const MAX_ATTEMPTS = 5;
+const ATTEMPT_WINDOW_MS = 10 * 60 * 1000; // 10 minutos
+const BLOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutos
+const BLOCK_LOG_FILE = process.env.BLOCK_LOG_FILE || path.join(__dirname, "blocked.log");
+
+function logBlockEvent(ip, blockedUntil) {
+  if (!ip) return;
+
+  const timestamp = new Date().toISOString();
+  const message = `[${timestamp}] IP ${ip} bloqueado até ${new Date(blockedUntil).toISOString()}\n`;
+
+  fs.appendFile(BLOCK_LOG_FILE, message, (err) => {
+    if (err) {
+      console.warn("⚠️ Não foi possível registar o bloqueio:", err.message);
+    }
+  });
+}
+
+function generateSessionToken() {
+  return crypto.randomBytes(48).toString("hex");
+}
+
+function registerSession(token) {
+  sessions.set(token, { expiresAt: Date.now() + TOKEN_TTL_MS });
+}
+
+function validateSession(token) {
+  const session = sessions.get(token);
+  if (!session) {
+    return false;
+  }
+
+  if (session.expiresAt <= Date.now()) {
+    sessions.delete(token);
+    return false;
+  }
+
+  session.expiresAt = Date.now() + TOKEN_TTL_MS;
+  return true;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, session] of sessions.entries()) {
+    if (session.expiresAt <= now) {
+      sessions.delete(token);
+    }
+  }
+  for (const [key, attempt] of loginAttempts.entries()) {
+    if (
+      (!attempt.blockedUntil || attempt.blockedUntil <= now) &&
+      (!attempt.firstAttemptAt || attempt.firstAttemptAt + ATTEMPT_WINDOW_MS <= now)
+    ) {
+      loginAttempts.delete(key);
+    }
+  }
+}, 60 * 60 * 1000).unref();
+
+if (!IS_AUTH_CONFIGURED) {
+  console.warn("⚠️ ADMIN_PASSWORD não está definido; os endpoints ficarão abertos sem autenticação.");
+}
+
+function authMiddleware(req, res, next) {
+  if (!IS_AUTH_CONFIGURED) {
+    return next();
+  }
+
+  if (req.method === "OPTIONS") {
+    return next();
+  }
+
+  const header = req.headers?.authorization;
+  const token = typeof header === "string" && header.startsWith("Bearer ")
+    ? header.slice(7)
+    : null;
+
+  if (token && validateSession(token)) {
+    return next();
+  }
+
+  return res.status(401).json({ error: "Não autorizado" });
+}
 
 app.set('case sensitive routing', false);
 
@@ -13,7 +105,7 @@ app.use(cors());
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
 
   if (req.method === "OPTIONS") {
     return res.sendStatus(200);
@@ -27,13 +119,82 @@ app.use((req, res, next) => {
 app.options("*", (req, res) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
   res.sendStatus(200);
 });
 
 
 
 app.use(express.json());
+
+app.post("/auth/login", (req, res) => {
+  if (!IS_AUTH_CONFIGURED) {
+    return res.status(500).json({ error: "Autenticação não configurada" });
+  }
+
+  const clientKey = req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() || req.ip;
+  const now = Date.now();
+  const record = loginAttempts.get(clientKey);
+
+  if (record?.blockedUntil && record.blockedUntil > now) {
+    const retryAfterSecs = Math.ceil((record.blockedUntil - now) / 1000);
+    return res.status(429).json({ error: "Muitas tentativas. Tenta novamente mais tarde.", retryAfter: retryAfterSecs });
+  }
+
+  const { username, password } = req.body || {};
+
+  if (ADMIN_USERNAME && ADMIN_USERNAME.length > 0 && username !== ADMIN_USERNAME) {
+    const response = handleFailedAttempt(clientKey, now, record);
+    return res.status(response.status).json(response.body);
+  }
+
+  if (typeof password !== "string" || password !== ADMIN_PASSWORD) {
+    const response = handleFailedAttempt(clientKey, now, record);
+    return res.status(response.status).json(response.body);
+  }
+
+  const token = generateSessionToken();
+  registerSession(token);
+  loginAttempts.delete(clientKey);
+
+  res.json({ token, expiresIn: TOKEN_TTL_MS });
+});
+
+function handleFailedAttempt(key, now, record) {
+  const withinWindow = record && record.firstAttemptAt + ATTEMPT_WINDOW_MS > now;
+  const current = withinWindow
+    ? { ...record }
+    : { attempts: 0, firstAttemptAt: now, blockedUntil: null };
+
+  current.attempts += 1;
+
+  if (current.attempts >= MAX_ATTEMPTS) {
+    current.blockedUntil = now + BLOCK_DURATION_MS;
+    current.attempts = 0;
+    current.firstAttemptAt = now;
+    loginAttempts.set(key, current);
+    logBlockEvent(key, current.blockedUntil);
+    return {
+      status: 429,
+      body: {
+        error: "Excedeste o número de tentativas. Aguarda alguns minutos antes de tentar novamente.",
+        retryAfter: Math.ceil(BLOCK_DURATION_MS / 1000),
+      },
+    };
+  }
+
+  loginAttempts.set(key, current);
+
+  return {
+    status: 401,
+    body: {
+      error: "Credenciais inválidas",
+      attemptsRemaining: MAX_ATTEMPTS - current.attempts,
+    },
+  };
+}
+
+app.use("/matriculas", authMiddleware);
 
 
 async function initDB() {
