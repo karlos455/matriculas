@@ -31,11 +31,16 @@ services:
       - "5000:5000"
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:5000/matriculas}
     container_name: frontend-matriculas
     restart: always
     depends_on:
       - backend
+    environment:
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:5000/matriculas}
     networks:
       - matriculas-net
     ports:

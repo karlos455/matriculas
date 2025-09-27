@@ -1,3 +1,5 @@
+export REACT_APP_API_URL="https://matriculas.casadocarlos.info/matriculas"
+
 docker-compose down && docker-compose up -d --build
 docker image rm karlos2/frontend-matriculas:latest
 docker image rm karlos2/backend-matriculas:latest

@@ -58,6 +58,7 @@ async function initDB() {
       "ALTER TABLE matriculas ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION"
     );
 
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS historico_vistos (
         id SERIAL PRIMARY KEY,
@@ -308,7 +309,7 @@ app.put("/matriculas/:id", async (req, res) => {
         oldId,
       ]
     );
-   
+
     if (result.rowCount === 0) {
       return res.status(404).json({ error: "Matrícula não encontrada" });
     }
