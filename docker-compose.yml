@@ -6,9 +6,9 @@ services:
     container_name: postgres-matriculas
     restart: always
     environment:
-      POSTGRES_DB: matriculasdb
-      POSTGRES_USER: meu_usuario
-      POSTGRES_PASSWORD: minha_senha
+      POSTGRES_DB: ${POSTGRES_DB:-matriculasdb}
+      POSTGRES_USER: ${POSTGRES_USER:-meu_usuario}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-minha_senha}
     networks:
       - matriculas-net
     ports:
@@ -23,7 +23,7 @@ services:
     depends_on:
       - postgres
     environment:
-      DATABASE_URL: postgres://meu_usuario:minha_senha@postgres:5432/matriculasdb
+      DATABASE_URL: postgres://${POSTGRES_USER:-meu_usuario}:${POSTGRES_PASSWORD:-minha_senha}@postgres:5432/${POSTGRES_DB:-matriculasdb}
       PORT: 5000
       ADMIN_USERNAME: ${ADMIN_USERNAME:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
