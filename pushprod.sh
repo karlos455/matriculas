@@ -14,6 +14,7 @@ if [ -z "$ADMIN_PASSWORD" ]; then
 fi
 
 export REACT_APP_API_URL="https://matriculas.casadocarlos.info/matriculas"
+export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
 docker-compose down && docker-compose up -d --build
 docker image rm karlos2/frontend-matriculas:latest
