@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   TextField, Button, Card, CardContent, Dialog, DialogTitle, DialogContent,
   List, ListItem, ListItemButton, ListItemText, Typography, Box,
@@ -10,59 +10,34 @@ import { Grow } from "@mui/material";
 import { History } from "@mui/icons-material";
 
 
-const API_URL =
-  process.env.REACT_APP_API_URL ?? "http://localhost:5000/matriculas";
-
-const API_BASE_URL = API_URL.replace(/\/matriculas.*$/, "");
-
-const formatCooldown = (totalSeconds) => {
-  if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) {
-    return "alguns minutos";
-  }
-
-  if (totalSeconds >= 60) {
-    return `~${Math.ceil(totalSeconds / 60)} min`;
-  }
-
-  return `${Math.ceil(totalSeconds)}s`;
-};
+const API_URL = "https://matriculas.casadocarlos.info/matriculas";
 
 // ---------------------  PAGINA LOGIN  ---------------------
 
 export default function App() {
-  const [authToken, setAuthToken] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("authToken");
-    if (storedToken) {
-      setAuthToken(storedToken);
+    // Verifica se já existe um login guardado
+    const storedAuth = localStorage.getItem("isAuthenticated");
+    if (storedAuth === "true") {
       setIsAuthenticated(true);
     }
   }, []);
 
-  const handleLogin = useCallback((token) => {
-    if (!token) {
-      return;
-    }
-    localStorage.setItem("authToken", token);
-    setAuthToken(token);
+  const handleLogin = () => {
+    localStorage.setItem("isAuthenticated", "true"); // Guarda login
     setIsAuthenticated(true);
-  }, []);
+  };
 
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem("authToken");
-    setAuthToken(null);
+  const handleLogout = () => {
+    localStorage.removeItem("isAuthenticated"); // Apaga login
     setIsAuthenticated(false);
-  }, []);
+  };
 
   return (
     <Box>
-      {isAuthenticated ? (
-        <MatriculaSearch handleLogout={handleLogout} authToken={authToken} />
-      ) : (
-        <SplashScreen handleLogin={handleLogin} />
-      )}
+      {isAuthenticated ? <MatriculaSearch handleLogout={handleLogout} /> : <SplashScreen handleLogin={handleLogin} />}
     </Box>
   );
 }
@@ -73,19 +48,6 @@ function SplashScreen({ handleLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("Credenciais inválidas!");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lockedUntil, setLockedUntil] = useState(() => {
-    const stored = localStorage.getItem("loginLockUntil");
-    if (!stored) return null;
-    const parsed = parseInt(stored, 10);
-    if (Number.isFinite(parsed) && parsed > Date.now()) {
-      return parsed;
-    }
-    localStorage.removeItem("loginLockUntil");
-    return null;
-  });
-  const [lockCountdown, setLockCountdown] = useState(null); // segundos restantes
   const loginButtonRef = useRef(null);
 
   useEffect(() => {
@@ -94,110 +56,16 @@ function SplashScreen({ handleLogin }) {
     }
   }, []);
 
-  useEffect(() => {
-    if (!lockedUntil) {
-      setLockCountdown(null);
-      return undefined;
-    }
-
-    const updateCountdown = () => {
-      const remaining = lockedUntil - Date.now();
-      if (remaining <= 0) {
-        setLockedUntil(null);
-        localStorage.removeItem("loginLockUntil");
-        setLockCountdown(null);
-        setSnackbarOpen(false);
-        return;
-      }
-
-      setLockCountdown(Math.ceil(remaining / 1000));
-    };
-
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
-    return () => clearInterval(interval);
-  }, [lockedUntil]);
-
-  const isLocked = Boolean(lockedUntil && lockedUntil > Date.now());
-
-  const attemptLogin = async () => {
-    if (isLocked) {
-      const remainingText = lockCountdown ? formatCooldown(lockCountdown) : "alguns minutos";
-      setSnackbarOpen(true);
-      setErrorMessage(`Demasiadas tentativas. Tenta novamente em ${remainingText}.`);
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      setSnackbarOpen(false);
-
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: username.trim(),
-          password,
-        }),
-      });
-
-      if (!response.ok) {
-        let message = "Não foi possível contactar o servidor.";
-        let retryAfter = null;
-
-        try {
-          const errorData = await response.json();
-          if (typeof errorData?.error === "string") {
-            message = errorData.error;
-          }
-          if (errorData?.retryAfter) {
-            retryAfter = Number(errorData.retryAfter);
-          }
-        } catch (parseErr) {
-          // Ignora erros de parsing
-        }
-
-        if (response.status === 401 && message === "Não foi possível contactar o servidor.") {
-          message = "Credenciais inválidas!";
-        } else if (response.status === 500 && message === "Não foi possível contactar o servidor.") {
-          message = "Autenticação indisponível. Verifica as variáveis do servidor.";
-        } else if (response.status === 429 && retryAfter) {
-          const lockMillis = retryAfter * 1000;
-          const lockedUntilTs = Date.now() + lockMillis;
-          setLockedUntil(lockedUntilTs);
-          localStorage.setItem("loginLockUntil", lockedUntilTs.toString());
-          message = `${message} (tenta novamente em ${formatCooldown(retryAfter)}).`;
-        }
-
-        setErrorMessage(message);
-        throw new Error(message);
-      }
-
-      const data = await response.json();
-
-      if (!data?.token) {
-        throw new Error("Resposta inválida do servidor");
-      }
-
-      handleLogin(data.token);
-      setUsername("");
-      setPassword("");
-    } catch (error) {
-      console.error("❌ Erro ao autenticar:", error);
-      if (error instanceof Error && error.message) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage("Não foi possível autenticar. Tenta novamente.");
-      }
-      setSnackbarOpen(true);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const login = (e) => {
     if (e.key === "Enter" || e.type === "click") {
-      attemptLogin();
+      const adminUsername = process.env.REACT_APP_ADMIN_USERNAME;
+      const adminPassword = process.env.REACT_APP_ADMIN_PASSWORD;
+
+      if (username === adminUsername && password === adminPassword) {
+        handleLogin();
+      } else {
+        setSnackbarOpen(true);
+      }
     }
   };
 
@@ -218,7 +86,6 @@ function SplashScreen({ handleLogin }) {
           onChange={(e) => setUsername(e.target.value)}
           sx={{ mb: 2 }}
           onKeyDown={login} // Permite pressionar Enter para login
-          disabled={isLocked}
         />
         <TextField
           label="Password"
@@ -227,21 +94,14 @@ function SplashScreen({ handleLogin }) {
           onChange={(e) => setPassword(e.target.value)}
           sx={{ mb: 2 }}
           onKeyDown={login} // Permite pressionar Enter para login
-          disabled={isLocked}
         />
-        {isLocked && lockCountdown && (
-          <Typography variant="caption" sx={{ display: "block", mb: 2, color: "error.main" }}>
-            Bloqueado temporariamente. Tenta novamente em {formatCooldown(lockCountdown)}.
-          </Typography>
-        )}
         <Button
           variant="contained"
           fullWidth
           onClick={login}
-          disabled={isSubmitting || isLocked}
           ref={loginButtonRef} // Define o botão como referência para o focus automático
         >
-          {isSubmitting ? "A entrar..." : "Entrar"}
+          Entrar
         </Button>
         <Snackbar
           open={snackbarOpen}
@@ -250,7 +110,7 @@ function SplashScreen({ handleLogin }) {
           anchorOrigin={{ vertical: "top", horizontal: "center" }}
         >
           <Alert onClose={() => setSnackbarOpen(false)} severity="error" sx={{ width: "100%" }}>
-            {errorMessage}
+            Credenciais inválidas!
           </Alert>
         </Snackbar>
       </Card>
@@ -260,7 +120,7 @@ function SplashScreen({ handleLogin }) {
 
 // ---------------------  PAGINA PRINCIPAL  ---------------------
 
-function MatriculaSearch({ handleLogout, authToken }) {
+function MatriculaSearch({ handleLogout }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
   const [matriculas, setMatriculas] = useState([]);
@@ -295,26 +155,6 @@ function MatriculaSearch({ handleLogout, authToken }) {
   const [cor, setCor] = useState(""); 
   const [estadoCartao, setEstadoCartao] = useState("normal");
 
-  const authorizedFetch = useCallback((url, options = {}) => {
-    const headers = { ...(options.headers || {}) };
-
-    if (authToken) {
-      headers.Authorization = `Bearer ${authToken}`;
-    }
-
-    return fetch(url, { ...options, headers });
-  }, [authToken]);
-
-  useEffect(() => {
-    if (!authToken) {
-      handleLogout();
-    }
-  }, [authToken, handleLogout]);
-
-  if (!authToken) {
-    return null;
-  }
-
   const requestCurrentLocation = () =>
     new Promise((resolve) => {
       if (typeof navigator === "undefined" || !navigator.geolocation) {
@@ -337,30 +177,22 @@ function MatriculaSearch({ handleLogout, authToken }) {
       );
     });
 
-  const abrirHistorico = async (id) => {
-    if (!id || !authToken) return;
+  const abrirHistorico = (id) => {
+    if (!id) return;
 
     const idFormatado = id.toLowerCase();
 
-    try {
-      const res = await authorizedFetch(`${API_URL}/${idFormatado}/historico`);
-
-      if (res.status === 401) {
-        handleLogout();
-        return;
-      }
-
-      if (!res.ok) {
-        throw new Error("Erro ao buscar histórico");
-      }
-
-      const data = await res.json();
-      setHistoricoAtual(Array.isArray(data) ? data : []);
-      setMatriculaEmFoco(id.toUpperCase());
-      setHistoricoOpen(true);
-    } catch (err) {
-      console.error("❌ Erro ao buscar histórico:", err);
-    }
+    fetch(`${API_URL}/${idFormatado}/historico`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Erro ao buscar histórico");
+        return res.json();
+      })
+      .then((data) => {
+        setHistoricoAtual(Array.isArray(data) ? data : []);
+        setMatriculaEmFoco(id.toUpperCase());
+        setHistoricoOpen(true);
+      })
+      .catch((err) => console.error("❌ Erro ao buscar histórico:", err));
   };
 
 
@@ -380,33 +212,20 @@ function MatriculaSearch({ handleLogout, authToken }) {
     : [];
 
   // **Buscar todas as matrículas**
-  const fetchMatriculas = useCallback(async () => {
-    if (!authToken) {
-      return;
-    }
-
-    try {
-      const res = await authorizedFetch(API_URL);
-
-      if (res.status === 401) {
-        handleLogout();
-        return;
-      }
-
-      const data = await res.json();
-      setMatriculas(data);
-    } catch (error) {
-      console.error("❌ Erro ao buscar matrículas:", error);
-    }
-  }, [authToken, handleLogout, authorizedFetch]);
+  const fetchMatriculas = () => {
+    fetch(API_URL)
+      .then((res) => res.json())
+      .then((data) => setMatriculas(data))
+      .catch((error) => console.error("❌ Erro ao buscar matrículas:", error));
+  };
 
   useEffect(() => {
     fetchMatriculas();
-  }, [fetchMatriculas]);
+  }, []);
 
   // **Listar todas**
-  const listarTodas = async () => {
-    await fetchMatriculas();
+  const listarTodas = () => {
+    fetchMatriculas();
     setIsListOpen(true);
   };
 
@@ -414,11 +233,6 @@ function MatriculaSearch({ handleLogout, authToken }) {
 
   // **Marcar como visto por último**
   const marcarComoVisto = async (id) => {
-    if (!authToken) {
-      handleLogout();
-      return;
-    }
-
     const idFormatado = id.toLowerCase();
     let coords = null;
 
@@ -429,7 +243,7 @@ function MatriculaSearch({ handleLogout, authToken }) {
     }
 
     try {
-      const res = await authorizedFetch(`${API_URL}/${idFormatado}/visto`, {
+      const res = await fetch(`${API_URL}/${idFormatado}/visto`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -437,11 +251,6 @@ function MatriculaSearch({ handleLogout, authToken }) {
           longitude: coords?.longitude ?? null,
         }),
       });
-
-      if (res.status === 401) {
-        handleLogout();
-        return;
-      }
 
       if (!res.ok) {
         throw new Error("Erro ao marcar como visto");
@@ -467,11 +276,6 @@ function MatriculaSearch({ handleLogout, authToken }) {
   const addMatricula = async () => {
     const idNormalizado = newMatricula.trim().toLowerCase();
     if (!idNormalizado) return;
-
-    if (!authToken) {
-      handleLogout();
-      return;
-    }
 
     if (!isEditing && matriculas.some((m) => m.id.toLowerCase() === idNormalizado)) {
       setAlertOpen(true);
@@ -514,16 +318,11 @@ function MatriculaSearch({ handleLogout, authToken }) {
         longitude: locationPayload.longitude,
       };
 
-      const response = await authorizedFetch(url, {
+      const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(novaMatricula),
       });
-
-      if (response.status === 401) {
-        handleLogout();
-        return;
-      }
 
       if (!response.ok) {
         throw new Error("Erro ao guardar matrícula");
@@ -584,44 +383,33 @@ function MatriculaSearch({ handleLogout, authToken }) {
   
 
   // **Apagar matrícula**
-  const deleteMatricula = async () => {
+  const deleteMatricula = () => {
     if (!matriculaToDelete) return;
-
-    if (!authToken) {
-      handleLogout();
-      return;
-    }
 
     const idFormatado = matriculaToDelete.toLowerCase();
 
-    try {
-      const res = await authorizedFetch(`${API_URL}/${idFormatado}`, { method: "DELETE" });
+    fetch(`${API_URL}/${idFormatado}`, { method: "DELETE" })
+      .then((res) => {
+        if (!res.ok) throw new Error("Erro ao apagar matrícula");
 
-      if (res.status === 401) {
-        handleLogout();
-        return;
-      }
+        setMatriculas((prev) => prev.filter((m) => m.id.toLowerCase() !== idFormatado));
+        setDeleteConfirmOpen(false);
+        setMatriculaToDelete(null);
 
-      if (!res.ok) {
-        throw new Error("Erro ao apagar matrícula");
-      }
+        // Limpa o cartão se a matrícula visível for a apagada
+        if (selected?.id.toLowerCase() === idFormatado) {
+          setSelected(null);
+        }
 
-      setMatriculas((prev) => prev.filter((m) => m.id.toLowerCase() !== idFormatado));
-      setDeleteConfirmOpen(false);
-      setMatriculaToDelete(null);
 
-      if (selected?.id.toLowerCase() === idFormatado) {
-        setSelected(null);
-      }
+        setDeleteToast(true);
+        setIsDialogOpen(false);
+        setNewMatricula("");
+        setNewContexto("");
+        setIsEditing(false);
 
-      setDeleteToast(true);
-      setIsDialogOpen(false);
-      setNewMatricula("");
-      setNewContexto("");
-      setIsEditing(false);
-    } catch (error) {
-      console.error("❌ Erro ao apagar matrícula:", error);
-    }
+      })
+      .catch((error) => console.error("❌ Erro ao apagar matrícula:", error));
   };
 
   return (
