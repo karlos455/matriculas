@@ -260,7 +260,10 @@ app.post("/matriculas", async (req, res) => {
       "INSERT INTO matriculas (id, contexto, cor, latitude, longitude) VALUES ($1, $2, $3, $4, $5) RETURNING *",
       [id.toLowerCase(), contexto, cor, finalLatitude, finalLongitude]
     );
-    
+    const created = newMatricula.rows[0];
+    console.log(
+      `[MATRICULAS] Adicionada ${created?.id ?? id} | Cor: ${created?.cor ?? cor ?? "sem-cor"}`
+    );
     res.json(newMatricula.rows[0]);
   } catch (err) {
     console.error(err.message);
@@ -278,7 +281,7 @@ app.delete("/matriculas/:id", async (req, res) => {
     if (result.rowCount === 0) {
       return res.status(404).json({ error: "Matrícula não encontrada" });
     }
-
+    console.log(`[MATRICULAS] Apagada ${id.toLowerCase()}`);
     res.json({ message: "Matrícula apagada com sucesso" });
   } catch (error) {
     console.error("Erro ao apagar matrícula:", error);
@@ -308,11 +311,13 @@ app.put("/matriculas/:id", async (req, res) => {
         oldId,
       ]
     );
-   
+
     if (result.rowCount === 0) {
       return res.status(404).json({ error: "Matrícula não encontrada" });
     }
-
+    console.log(
+      `[MATRICULAS] Atualizada ${oldId} -> ${result.rows[0]?.id ?? newId} | Cor: ${result.rows[0]?.cor ?? cor ?? "sem-cor"}`
+    );
     res.json(result.rows[0]);
   } catch (error) {
     console.error("Erro ao editar matrícula:", error);
@@ -320,6 +325,19 @@ app.put("/matriculas/:id", async (req, res) => {
   }
 });
 
+
+app.post("/matriculas/security/login-lock", (req, res) => {
+  const { ip, lockUntil } = req.body || {};
+
+  const lockDate = new Date(Number(lockUntil));
+  const lockDateStr = Number.isFinite(lockDate.getTime())
+    ? lockDate.toISOString()
+    : "desconhecido";
+
+  console.log(`[SECURITY] IP ${ip ?? "desconhecido"} bloqueado até ${lockDateStr}`);
+
+  res.status(204).end();
+});
 
 
 

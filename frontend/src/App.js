@@ -45,29 +45,230 @@ export default function App() {
 // **Splash Screen de Login**
 
 function SplashScreen({ handleLogin }) {
+  const MAX_FAILED_ATTEMPTS = 5;
+  const LOCK_DURATION_MS = 60_000;
+  const SECURITY_STORAGE_KEY = "loginSecurity";
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState("error");
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockUntil, setLockUntil] = useState(null);
+  const [lockRemaining, setLockRemaining] = useState(0);
+  const [clientIp, setClientIp] = useState(null);
+  const [securityReady, setSecurityReady] = useState(false);
   const loginButtonRef = useRef(null);
-
+  const lastReportedLockRef = useRef(null);
+  
   useEffect(() => {
     if (loginButtonRef.current) {
       loginButtonRef.current.focus(); // Dá foco ao botão "Entrar"
     }
   }, []);
 
+  const isLocked = lockRemaining > 0;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const readSecurityState = (ip) => {
+      if (!isMounted || !ip) return;
+      const storageKey = `${SECURITY_STORAGE_KEY}:${ip}`;
+      const stored = localStorage.getItem(storageKey);
+      if (!stored) {
+        setFailedAttempts(0);
+        setLockUntil(null);
+        setLockRemaining(0);
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(stored);
+        const storedFailedAttempts = Number.isFinite(parsed?.failedAttempts)
+          ? parsed.failedAttempts
+          : 0;
+        const storedLockUntil =
+          typeof parsed?.lockUntil === "number" ? parsed.lockUntil : null;
+
+        if (storedLockUntil && storedLockUntil > Date.now()) {
+          setLockUntil(storedLockUntil);
+          setLockRemaining(storedLockUntil - Date.now());
+          setFailedAttempts(
+            Math.min(Math.max(storedFailedAttempts, 0), MAX_FAILED_ATTEMPTS)
+          );
+        } else {
+          const sanitizedAttempts = Math.min(
+            Math.max(storedFailedAttempts, 0),
+            MAX_FAILED_ATTEMPTS
+          );
+          setFailedAttempts(sanitizedAttempts);
+          setLockUntil(null);
+          setLockRemaining(0);
+          if (sanitizedAttempts === 0) {
+            localStorage.removeItem(storageKey);
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao restaurar estado de segurança:", error);
+        localStorage.removeItem(storageKey);
+        setFailedAttempts(0);
+        setLockUntil(null);
+        setLockRemaining(0);
+      }
+    };
+
+    const fetchClientIp = async () => {
+      try {
+        const response = await fetch("https://api.ipify.org?format=json");
+        if (!response.ok) {
+          throw new Error("Falha ao obter IP");
+        }
+        const data = await response.json();
+        if (!isMounted) return;
+        const ip = data?.ip || "unknown";
+        setClientIp(ip);
+        readSecurityState(ip);
+      } catch (error) {
+        console.error("Erro ao obter IP do cliente:", error);
+        if (!isMounted) return;
+        const fallbackIp = "local-fallback";
+        setClientIp(fallbackIp);
+        readSecurityState(fallbackIp);
+      } finally {
+        if (isMounted) {
+          setSecurityReady(true);
+        }
+      }
+    };
+
+    fetchClientIp();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!clientIp) return;
+    const storageKey = `${SECURITY_STORAGE_KEY}:${clientIp}`;
+    if (!lockUntil && failedAttempts === 0) {
+      localStorage.removeItem(storageKey);
+      return;
+    }
+
+    const payload = {
+      failedAttempts,
+      lockUntil,
+    };
+
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(payload));
+    } catch (error) {
+      console.error("Erro ao guardar estado de segurança:", error);
+    }
+  }, [clientIp, failedAttempts, lockUntil]);
+
+  useEffect(() => {
+    if (!lockUntil) {
+      setLockRemaining(0);
+      return undefined;
+    }
+
+    const updateLockRemaining = () => {
+      const remaining = lockUntil - Date.now();
+
+      if (remaining <= 0) {
+        setLockUntil(null);
+        setLockRemaining(0);
+      } else {
+        setLockRemaining(remaining);
+      }
+    };
+
+    updateLockRemaining();
+    const intervalId = setInterval(updateLockRemaining, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [lockUntil]);
+
+  const openSnackbar = (message, severity = "error") => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  };
+
   const login = (e) => {
     if (e.key === "Enter" || e.type === "click") {
+      if (!securityReady) {
+        openSnackbar("Aguarde enquanto verificamos a segurança...", "info");
+        return;
+      }
+
+      if (isLocked) {
+        openSnackbar(
+          `Muitas tentativas. Tente novamente em ${Math.ceil(lockRemaining / 1000)} segundos.`,
+          "warning"
+        );
+        return;
+      }
+
       const adminUsername = process.env.REACT_APP_ADMIN_USERNAME;
       const adminPassword = process.env.REACT_APP_ADMIN_PASSWORD;
 
       if (username === adminUsername && password === adminPassword) {
+        setFailedAttempts(0);
+        setLockUntil(null);
+        setLockRemaining(0);
         handleLogin();
       } else {
-        setSnackbarOpen(true);
+        const nextFailedAttempts = failedAttempts + 1;
+        if (nextFailedAttempts >= MAX_FAILED_ATTEMPTS) {
+          const until = Date.now() + LOCK_DURATION_MS;
+          setFailedAttempts(0);
+          setLockUntil(until);
+          setLockRemaining(LOCK_DURATION_MS);
+          openSnackbar(
+            "Muitas tentativas falhadas. O login foi temporariamente bloqueado.",
+            "warning"
+          );
+        } else {
+          setFailedAttempts(nextFailedAttempts);
+          const remainingAttempts = MAX_FAILED_ATTEMPTS - nextFailedAttempts;
+          openSnackbar(
+            `Credenciais inválidas! ${remainingAttempts} tentativa${
+              remainingAttempts === 1 ? "" : "s"
+            } restante${remainingAttempts === 1 ? "" : "s"}.`,
+            "error"
+          );
+        }
       }
     }
   };
+
+  useEffect(() => {
+    if (!clientIp || !lockUntil) return;
+    if (lockUntil <= Date.now()) return;
+
+    const reportedKey = `${clientIp}:${lockUntil}`;
+    if (lastReportedLockRef.current === reportedKey) return;
+    lastReportedLockRef.current = reportedKey;
+
+    const notifyLock = async () => {
+      try {
+        await fetch(`${API_URL}/security/login-lock`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ip: clientIp, lockUntil }),
+        });
+      } catch (error) {
+        console.warn("⚠️ Falha ao reportar bloqueio de IP:", error);
+      }
+    };
+
+    notifyLock();
+  }, [clientIp, lockUntil]);
 
   return (
     <Box sx={{
@@ -86,6 +287,7 @@ function SplashScreen({ handleLogin }) {
           onChange={(e) => setUsername(e.target.value)}
           sx={{ mb: 2 }}
           onKeyDown={login} // Permite pressionar Enter para login
+          disabled={isLocked || !securityReady}
         />
         <TextField
           label="Password"
@@ -94,23 +296,43 @@ function SplashScreen({ handleLogin }) {
           onChange={(e) => setPassword(e.target.value)}
           sx={{ mb: 2 }}
           onKeyDown={login} // Permite pressionar Enter para login
+          disabled={isLocked || !securityReady}
         />
         <Button
           variant="contained"
           fullWidth
           onClick={login}
+          disabled={isLocked || !securityReady}
           ref={loginButtonRef} // Define o botão como referência para o focus automático
         >
-          Entrar
+          {!securityReady
+            ? "Aguarde..."
+            : isLocked
+            ? `Bloqueado (${Math.ceil(lockRemaining / 1000)}s)`
+            : "Entrar"}
         </Button>
+        {securityReady && failedAttempts > 0 && !isLocked && (
+          <Typography variant="body2" sx={{ mt: 2 }}>
+            {`Tentativas restantes: ${MAX_FAILED_ATTEMPTS - failedAttempts}`}
+          </Typography>
+        )}
+        {!securityReady && (
+          <Typography variant="body2" sx={{ mt: 2 }}>
+            A preparar segurança de login...
+          </Typography>
+        )}
         <Snackbar
           open={snackbarOpen}
           autoHideDuration={3000}
           onClose={() => setSnackbarOpen(false)}
           anchorOrigin={{ vertical: "top", horizontal: "center" }}
         >
-          <Alert onClose={() => setSnackbarOpen(false)} severity="error" sx={{ width: "100%" }}>
-            Credenciais inválidas!
+          <Alert
+            onClose={() => setSnackbarOpen(false)}
+            severity={snackbarSeverity}
+            sx={{ width: "100%" }}
+          >
+            {snackbarMessage}
           </Alert>
         </Snackbar>
       </Card>
