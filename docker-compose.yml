@@ -51,7 +51,7 @@ services:
     networks:
       - matriculas-net
     ports:
-      - "3000:3000"
+      - "3000:80"
 
 volumes:
   postgres_data:

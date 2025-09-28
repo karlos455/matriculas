@@ -1,7 +1,7 @@
 export REACT_APP_API_URL="https://matriculas.casadocarlos.info/matriculas"
 export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
-docker-compose build frontend backend
+docker compose build --no-cache 
 docker image rm karlos2/frontend-matriculas:latest >/dev/null 2>&1 || true
 docker image rm karlos2/backend-matriculas:latest >/dev/null 2>&1 || true
 docker image tag matricula-app_frontend karlos2/frontend-matriculas:latest
