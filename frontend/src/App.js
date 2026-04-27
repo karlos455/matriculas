@@ -12,6 +12,80 @@ import { History } from "@mui/icons-material";
 
 const API_URL = "https://matriculas.casadocarlos.info/matriculas";
 
+const ui = {
+  page: {
+    minHeight: "100vh",
+    backgroundColor: "#f8fafc",
+    color: "#0f172a",
+  },
+
+  container: {
+    maxWidth: 720,
+    mx: "auto",
+    px: 2,
+    py: 3,
+  },
+
+  headerCard: {
+    backgroundColor: "#ffffff",
+    border: "1px solid #e2e8f0",
+    borderRadius: 4,
+    boxShadow: "0 10px 25px rgba(15, 23, 42, 0.06)",
+    p: 3,
+    mb: 3,
+  },
+
+  mainCard: {
+    backgroundColor: "#ffffff",
+    border: "1px solid #e2e8f0",
+    borderRadius: 4,
+    boxShadow: "0 10px 25px rgba(15, 23, 42, 0.08)",
+    p: 2,
+  },
+
+  primaryButton: {
+    backgroundColor: "#0f172a",
+    color: "#ffffff",
+    fontWeight: 700,
+    textTransform: "none",
+    borderRadius: 2,
+    px: 3,
+    py: 1.2,
+    "&:hover": {
+      backgroundColor: "#1e293b",
+    },
+  },
+
+  secondaryButton: {
+    backgroundColor: "#ffffff",
+    color: "#0f172a",
+    border: "1px solid #cbd5e1",
+    fontWeight: 700,
+    textTransform: "none",
+    borderRadius: 2,
+    px: 3,
+    py: 1.2,
+    "&:hover": {
+      backgroundColor: "#f1f5f9",
+      borderColor: "#94a3b8",
+    },
+  },
+
+  successButton: {
+    backgroundColor: "#166534",
+    color: "#ffffff",
+    fontWeight: 700,
+    textTransform: "none",
+    borderRadius: 2,
+    px: 3,
+    py: 1.2,
+    "&:hover": {
+      backgroundColor: "#14532d",
+    },
+  },
+};
+
+
 // ---------------------  PAGINA LOGIN  ---------------------
 
 export default function App() {
@@ -654,22 +728,69 @@ function MatriculaSearch({ handleLogout }) {
   };
 
   return (
-    <Box sx={{ p: 2, maxWidth: 600, mx: "auto", textAlign: "center" }}>
-      <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ cursor: "pointer" }} onClick={() => { fetchMatriculas(); setSelected(null); setSearch(""); }}>
-        Pesquisa
+<Box sx={ui.page}>
+  <Box sx={ui.container}>
+
+<Box sx={ui.headerCard}>
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 2,
+      mb: 2,
+    }}
+  >
+    <Box sx={{ textAlign: "left" }}>
+      <Typography
+        variant="h4"
+        fontWeight={800}
+        sx={{ letterSpacing: "-0.03em", cursor: "pointer" }}
+        onClick={() => {
+          fetchMatriculas();
+          setSelected(null);
+          setSearch("");
+        }}
+      >
+        Matrículas
       </Typography>
 
-      {/* Campo de Pesquisa */}
-      <TextField
-        label="Procurar..."
-        fullWidth
-        value={search}
-        onChange={(e) => {
-          setSearch(e.target.value.trim());
-          setSelected(null);
-        }}
-        sx={{ mb: 2 }}
-      />
+      <Typography variant="body2" sx={{ color: "#64748b", mt: 0.5 }}>
+        Pesquisa, histórico e registo de veículos
+      </Typography>
+    </Box>
+
+    <Button
+      variant="outlined"
+      onClick={handleLogout}
+      sx={{
+        textTransform: "none",
+        borderRadius: 2,
+        fontWeight: 700,
+      }}
+    >
+      Sair
+    </Button>
+  </Box>
+
+  <TextField
+    label="Procurar matrícula ou observações"
+    fullWidth
+    value={search}
+    onChange={(e) => {
+      setSearch(e.target.value.trim());
+      setSelected(null);
+    }}
+    sx={{
+      "& .MuiOutlinedInput-root": {
+        borderRadius: 3,
+        backgroundColor: "#f8fafc",
+      },
+    }}
+  />
+</Box>
+
+
 
       {/* Lista de Resultados da Pesquisa */}
       {filtered.length > 0 && (
@@ -872,24 +993,17 @@ function MatriculaSearch({ handleLogout }) {
   }}
 >
   {/* Visto Agora */}
-  <Button
-    variant="contained"
-    sx={{
-      backgroundColor: "#386641",
-      color: "white",
-      fontWeight: "bold",
-      textTransform: "uppercase",
-      px: 3,
-      py: 1.5,
-      borderRadius: 2,
-      flex: "1 1 40%",
-      maxWidth: 180,
-      '&:hover': { backgroundColor: "#2a4f31" }
-    }}
-    onClick={() => marcarComoVisto(selected.id)}
-  >
-    Visto Agora
-  </Button>
+<Button
+  variant="contained"
+  sx={{
+    ...ui.successButton,
+    flex: "1 1 40%",
+    maxWidth: 180,
+  }}
+  onClick={() => marcarComoVisto(selected.id)}
+>
+  Visto agora
+</Button>
 
   {/* Histórico */}
   <Button
@@ -943,71 +1057,29 @@ function MatriculaSearch({ handleLogout }) {
 {/* Botões de Ação */}
       <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2, flexWrap: "wrap" }}>
 
-            <Button
-        variant="contained"
-        startIcon={<Add />}
-        onClick={() => {
-          if (!isEditing) {
-            setNewMatricula(search);
-            setEstadoCartao("normal"); 
-          }
-          setIsDialogOpen(true);
-        }}
-        sx={{
-          backgroundColor: "#0d1b2a",
-          color: "white",
-          fontWeight: "bold",
-          textTransform: "uppercase",
-          px: 3,
-          py: 1.5,
-          borderRadius: 2,
-          '&:hover': {
-            backgroundColor: "#1b263b"
-          },
-          minWidth: 160
-        }}
-      >
-        Adicionar
-      </Button>
+           <Button
+  variant="contained"
+  startIcon={<Add />}
+  onClick={() => {
+    if (!isEditing) {
+      setNewMatricula(search);
+      setEstadoCartao("normal"); 
+    }
+    setIsDialogOpen(true);
+  }}
+  sx={ui.primaryButton}
+>
+  Adicionar
+</Button>
 
-      <Button
-        variant="contained"
-        startIcon={<ListIcon />}
-        onClick={listarTodas}
-        sx={{
-          backgroundColor: "#0d1b2a",
-          color: "white",
-          fontWeight: "bold",
-          textTransform: "uppercase",
-          px: 3,
-          py: 1.5,
-          borderRadius: 2,
-          '&:hover': {
-            backgroundColor: "#1b263b"
-          },
-          minWidth: 160
-        }}
-      >
-        Listar Todas
-      </Button>
-
-        <Button
-          variant="outlined"
-          color="error"
-          onClick={handleLogout}
-          sx={{
-            position: "absolute",
-            top: 10,
-            right: 10,
-            fontWeight: "bold",
-            textTransform: "uppercase",
-            borderRadius: 2,
-            px: 2.5,
-            py: 1
-          }}
-        >
-          Sair
-        </Button>
+     <Button
+  variant="outlined"
+  startIcon={<ListIcon />}
+  onClick={listarTodas}
+  sx={ui.secondaryButton}
+>
+  Listar todas
+</Button>
       </Box>
 
 
@@ -1532,5 +1604,9 @@ function MatriculaSearch({ handleLogout }) {
             
     </Box>
     
-  );
+  
+    </Box>
+
+);
+  
 }
