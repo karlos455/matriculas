@@ -61,6 +61,7 @@ function SplashScreen({ handleLogin }) {
   const [securityReady, setSecurityReady] = useState(false);
   const loginButtonRef = useRef(null);
   const lastReportedLockRef = useRef(null);
+  const clearSecurityStateRef = useRef(() => {});
   
   useEffect(() => {
     if (loginButtonRef.current) {
@@ -151,10 +152,27 @@ function SplashScreen({ handleLogin }) {
   }, []);
 
   useEffect(() => {
+    clearSecurityStateRef.current = () => {
+      if (!clientIp) return;
+      const storageKey = `${SECURITY_STORAGE_KEY}:${clientIp}`;
+      try {
+        localStorage.removeItem(storageKey);
+      } catch (error) {
+        console.warn("⚠️ Erro ao limpar estado de segurança:", error);
+      }
+      lastReportedLockRef.current = null;
+    };
+  }, [clientIp]);
+
+  useEffect(() => {
     if (!clientIp) return;
     const storageKey = `${SECURITY_STORAGE_KEY}:${clientIp}`;
     if (!lockUntil && failedAttempts === 0) {
-      localStorage.removeItem(storageKey);
+      try {
+        localStorage.removeItem(storageKey);
+      } catch (error) {
+        console.warn("⚠️ Erro ao limpar estado de segurança:", error);
+      }
       return;
     }
 
@@ -218,6 +236,7 @@ function SplashScreen({ handleLogin }) {
       const adminPassword = process.env.REACT_APP_ADMIN_PASSWORD;
 
       if (username === adminUsername && password === adminPassword) {
+        clearSecurityStateRef.current();
         setFailedAttempts(0);
         setLockUntil(null);
         setLockRemaining(0);
