@@ -512,6 +512,42 @@ function MatriculaSearch({ handleLogout }) {
       .catch((err) => console.error("❌ Erro ao buscar histórico:", err));
   };
 
+  const apagarEntradaHistorico = async (historicoId) => {
+  if (!matriculaEmFoco || !historicoId) return;
+
+  const idFormatado = matriculaEmFoco.toLowerCase();
+
+  try {
+    const res = await fetch(`${API_URL}/${idFormatado}/historico/${historicoId}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      throw new Error("Erro ao apagar entrada do histórico");
+    }
+
+    setHistoricoAtual((prev) =>
+      prev.filter((item) => item.id !== historicoId)
+    );
+
+    fetchMatriculas();
+
+    if (selected?.id?.toLowerCase() === idFormatado) {
+      const updatedRes = await fetch(`${API_URL}`);
+      const updatedData = await updatedRes.json();
+
+      const updatedSelected = updatedData.find(
+        (m) => m.id.toLowerCase() === idFormatado
+      );
+
+      if (updatedSelected) {
+        setSelected(updatedSelected);
+      }
+    }
+  } catch (error) {
+    console.error("❌ Erro ao apagar entrada do histórico:", error);
+  }
+};
 
   const handleSelect = (matricula) => {
     setSelected(matricula);
@@ -2129,31 +2165,58 @@ function MatriculaSearch({ handleLogout }) {
                       </Typography>
                     </Box>
 
-                    {hasCoordenadas && (
-                      <Button
-                        component="a"
-                        href={googleMapsLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="outlined"
-                        fullWidth
-                        sx={{
-                          mt: 1.5,
-                          textTransform: "none",
-                          borderRadius: 2,
-                          fontWeight: 800,
-                          borderColor: "#cbd5e1",
-                          color: "#0f172a",
-                          backgroundColor: "#ffffff",
-                          "&:hover": {
-                            backgroundColor: "#f1f5f9",
-                            borderColor: "#94a3b8",
-                          },
-                        }}
-                      >
-                        Abrir no Google Maps
-                      </Button>
-                    )}
+<Box
+  sx={{
+    display: "flex",
+    flexDirection: "column",
+    gap: 1,
+    mt: 1.5,
+  }}
+>
+  {hasCoordenadas && (
+    <Button
+      component="a"
+      href={googleMapsLink}
+      target="_blank"
+      rel="noopener noreferrer"
+      variant="outlined"
+      fullWidth
+      sx={{
+        textTransform: "none",
+        borderRadius: 2,
+        fontWeight: 800,
+        borderColor: "#cbd5e1",
+        color: "#0f172a",
+        backgroundColor: "#ffffff",
+        "&:hover": {
+          backgroundColor: "#f1f5f9",
+          borderColor: "#94a3b8",
+        },
+      }}
+    >
+      Abrir no Google Maps
+    </Button>
+  )}
+
+  <Button
+    variant="text"
+    fullWidth
+    onClick={() => apagarEntradaHistorico(item.id)}
+    sx={{
+      textTransform: "none",
+      borderRadius: 2,
+      fontWeight: 800,
+      color: "#dc2626",
+      "&:hover": {
+        backgroundColor: "#fee2e2",
+      },
+    }}
+  >
+    Apagar esta visualização
+  </Button>
+</Box>
+
+
                   </Box>
                 </Box>
               </CardContent>

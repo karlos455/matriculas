@@ -219,7 +219,55 @@ app.get("/matriculas/:id/historico", async (req, res) => {
   }
 });
 
+// Apagar uma entrada específica do histórico
+app.delete("/matriculas/:id/historico/:historicoId", async (req, res) => {
+  try {
+    const matriculaId = req.params.id.toLowerCase();
+    const historicoId = Number(req.params.historicoId);
 
+    if (!Number.isInteger(historicoId)) {
+      return res.status(400).json({ error: "ID de histórico inválido" });
+    }
+
+    const result = await pool.query(
+      "DELETE FROM historico_vistos WHERE id = $1 AND LOWER(matricula_id) = $2 RETURNING *",
+      [historicoId, matriculaId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Entrada de histórico não encontrada" });
+    }
+
+    const latestSeen = await pool.query(
+      "SELECT data, latitude, longitude FROM historico_vistos WHERE LOWER(matricula_id) = $1 ORDER BY data DESC LIMIT 1",
+      [matriculaId]
+    );
+
+    if (latestSeen.rowCount > 0) {
+      await pool.query(
+        "UPDATE matriculas SET ultima_vista = $1, latitude = COALESCE($2, latitude), longitude = COALESCE($3, longitude) WHERE LOWER(id) = $4",
+        [
+          latestSeen.rows[0].data,
+          latestSeen.rows[0].latitude,
+          latestSeen.rows[0].longitude,
+          matriculaId,
+        ]
+      );
+    } else {
+      await pool.query(
+        "UPDATE matriculas SET ultima_vista = NULL WHERE LOWER(id) = $1",
+        [matriculaId]
+      );
+    }
+
+    console.log(`[MATRICULAS] Histórico ${historicoId} apagado da matrícula ${matriculaId}`);
+
+    res.json({ message: "Entrada de histórico apagada com sucesso" });
+  } catch (error) {
+    console.error("Erro ao apagar entrada do histórico:", error);
+    res.status(500).json({ error: "Erro ao apagar entrada do histórico" });
+  }
+});
 
 // 🟢 Obter todas as matrículas
 app.get("/matriculas", async (req, res) => {
