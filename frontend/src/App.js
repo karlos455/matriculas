@@ -1291,27 +1291,78 @@ function MatriculaSearch({ handleLogout }) {
 </Button>
       </Box>
 
+{/* Dialog Adicionar/Editar Matrícula */}
+<Dialog
+  open={isDialogOpen}
+  onClose={() => {
+    setIsDialogOpen(false);
+    setNewMatricula("");
+    setNewContexto("");
+    setIsEditing(false);
+  }}
+  fullWidth
+  maxWidth="sm"
+  PaperProps={{
+    sx: {
+      mx: 2,
+      borderRadius: 4,
+      overflow: "hidden",
+    },
+  }}
+>
+  <DialogTitle
+    sx={{
+      px: 3,
+      py: 2.5,
+      backgroundColor: "#0f172a",
+      color: "#ffffff",
+    }}
+  >
+    <Typography variant="h6" fontWeight={800}>
+      {isEditing ? "Editar matrícula" : "Adicionar matrícula"}
+    </Typography>
 
-      {/* Dialog Adicionar/Editar Matrícula */}
-      <Dialog
-        open={isDialogOpen}
-        onClose={() => {
-          setIsDialogOpen(false);
-          setNewMatricula("");
-          setNewContexto("");
-          setIsEditing(false);
+    <Typography variant="body2" sx={{ color: "#cbd5e1", mt: 0.5 }}>
+      {isEditing
+        ? "Atualiza os dados associados a esta matrícula."
+        : "Regista uma nova matrícula com observações, cor e estado."}
+    </Typography>
+  </DialogTitle>
+
+  <DialogContent
+    sx={{
+      backgroundColor: "#f8fafc",
+      p: 2,
+    }}
+  >
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 1.5,
+      }}
+    >
+      <Box
+        sx={{
+          p: 2,
+          borderRadius: 3,
+          backgroundColor: "#ffffff",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 8px 20px rgba(15, 23, 42, 0.05)",
         }}
-        fullWidth
-        maxWidth="sm"
-        PaperProps={{ sx: { mx: 2, borderRadius: 3 } }}
       >
-        <DialogTitle
-          sx={{ display: "flex", alignItems: "center", gap: 1, fontWeight: "bold", fontSize: "1.4rem", textAlign: "center", justifyContent: "center" }}
+        <Typography
+          variant="caption"
+          sx={{
+            display: "block",
+            color: "#64748b",
+            fontWeight: 800,
+            mb: 1,
+          }}
         >
-          <Add fontSize="medium" />
-          {isEditing ? "Editar Matrícula" : "Adicionar Matrícula"}
-        </DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          Identificação
+        </Typography>
+
         <TextField
           label="Matrícula"
           fullWidth
@@ -1321,160 +1372,323 @@ function MatriculaSearch({ handleLogout }) {
           variant="outlined"
           InputLabelProps={{ shrink: true }}
           disabled={isEditing}
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 3,
+              backgroundColor: isEditing ? "#f1f5f9" : "#ffffff",
+            },
+          }}
         />
+
+        {isEditing && (
+          <Typography variant="caption" sx={{ color: "#64748b", mt: 1, display: "block" }}>
+            A matrícula não pode ser alterada durante a edição.
+          </Typography>
+        )}
+      </Box>
+
+      <Box
+        sx={{
+          p: 2,
+          borderRadius: 3,
+          backgroundColor: "#ffffff",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 8px 20px rgba(15, 23, 42, 0.05)",
+        }}
+      >
+        <Typography
+          variant="caption"
+          sx={{
+            display: "block",
+            color: "#64748b",
+            fontWeight: 800,
+            mb: 1,
+          }}
+        >
+          Observações
+        </Typography>
 
         <TextField
           label="Observações"
           fullWidth
           multiline
-          minRows={1}
+          minRows={3}
           value={newContexto}
           onChange={(e) => setNewContexto(e.target.value)}
           variant="outlined"
           InputLabelProps={{ shrink: true }}
+          placeholder="Ex: carro preto, costuma estacionar perto da entrada..."
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 3,
+              backgroundColor: "#ffffff",
+            },
+          }}
         />
+      </Box>
 
-<Typography variant="body2" sx={{ mt: 2 }}>
-  Cor:
-</Typography>
-
-<Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mt: 1 }}>
-  {/* Opção para remover cor */}
-  <Box
-    onClick={() => setCor("")}
-    sx={{
-      width: 36,
-      height: 36,
-      borderRadius: "50%",
-      border: "2px dashed #999",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontSize: "0.8rem",
-      cursor: "pointer",
-      color: "#999",
-      "&:hover": {
-        backgroundColor: "#f0f0f0"
-      },
-      outline: cor === "" ? "3px solid #1b263b" : "none",
-      outlineOffset: 2
-    }}
-    title="Sem cor"
-  >
-    ✕
-  </Box>
-
-  {/* Cores disponíveis */}
-  {["white", "red", "blue", "black", "gray", "silver", "green", "yellow"].map((colorOption) => {
-    const isSelected = cor === colorOption;
-
-    return (
       <Box
-        key={colorOption}
-        onClick={() => setCor(colorOption)}
         sx={{
-          width: 36,
-          height: 36,
-          borderRadius: "50%",
-          backgroundColor: colorOption,
-          border: "1.5px solid #ccc",
-          cursor: "pointer",
-          transition: "all 0.2s ease-in-out",
-          outline: isSelected ? `3px solid ${colorOption === "white" ? "#999" : colorOption}` : "none",
-          outlineOffset: 2,
-          "&:hover": {
-            transform: "scale(1.1)",
-          },
+          p: 2,
+          borderRadius: 3,
+          backgroundColor: "#ffffff",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 8px 20px rgba(15, 23, 42, 0.05)",
         }}
-        title={colorOption}
-      />
-    );
-  })}
-</Box>
+      >
+        <Typography
+          variant="caption"
+          sx={{
+            display: "block",
+            color: "#64748b",
+            fontWeight: 800,
+            mb: 1,
+          }}
+        >
+          Cor do carro
+        </Typography>
 
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 1.2,
+          }}
+        >
+          {[
+            { value: "", label: "Sem cor", color: "transparent" },
+            { value: "white", label: "Branco", color: "#ffffff" },
+            { value: "black", label: "Preto", color: "#111827" },
+            { value: "gray", label: "Cinzento", color: "#6b7280" },
+            { value: "silver", label: "Prata", color: "#c0c0c0" },
+            { value: "red", label: "Vermelho", color: "#dc2626" },
+            { value: "blue", label: "Azul", color: "#2563eb" },
+            { value: "green", label: "Verde", color: "#16a34a" },
+            { value: "yellow", label: "Amarelo", color: "#facc15" },
+          ].map((colorOption) => {
+            const isSelected = cor === colorOption.value;
 
-<Typography variant="body2" sx={{ mt: 3 }}>
-  Estado:
-</Typography>
+            return (
+              <Box
+                key={colorOption.value || "sem-cor"}
+                onClick={() => setCor(colorOption.value)}
+                sx={{
+                  p: 1,
+                  borderRadius: 3,
+                  border: isSelected ? "2px solid #0f172a" : "1px solid #e2e8f0",
+                  backgroundColor: isSelected ? "#f1f5f9" : "#ffffff",
+                  cursor: "pointer",
+                  textAlign: "center",
+                  transition: "all 0.2s ease-in-out",
+                  "&:hover": {
+                    backgroundColor: "#f8fafc",
+                    transform: "translateY(-1px)",
+                  },
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: "50%",
+                    mx: "auto",
+                    mb: 0.7,
+                    backgroundColor: colorOption.color,
+                    border:
+                      colorOption.value === ""
+                        ? "2px dashed #94a3b8"
+                        : colorOption.value === "white"
+                        ? "1px solid #94a3b8"
+                        : "1px solid transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#64748b",
+                    fontSize: "0.75rem",
+                    fontWeight: 900,
+                  }}
+                >
+                  {colorOption.value === "" ? "×" : ""}
+                </Box>
 
-<Box sx={{ display: "flex", gap: 2, mt: 1 }}>
-  {[
-    { valor: "normal", cor: "white", label: "Normal" },
-    { valor: "verde", cor: "#e6f4ea", label: "Verde" },
-    { valor: "vermelho", cor: "#fbeaea", label: "Vermelho" },
-  ].map(({ valor, cor, label }) => (
-    <Box
-      key={valor}
-      onClick={() => setEstadoCartao(valor)}
-      sx={{
-        width: 30,
-        height: 30,
-        borderRadius: "50%",
-        backgroundColor: cor,
-        border: "2px solid #999",
-        cursor: "pointer",
-        outline: estadoCartao === valor ? "3px solid #1b263b" : "none",
-        outlineOffset: 2,
-        transition: "all 0.2s ease-in-out",
-        "&:hover": {
-          transform: "scale(1.1)",
-        },
-      }}
-      title={label}
-    />
-  ))}
-</Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "#334155",
+                    fontWeight: isSelected ? 800 : 600,
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {colorOption.label}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Box>
+      </Box>
 
+      <Box
+        sx={{
+          p: 2,
+          borderRadius: 3,
+          backgroundColor: "#ffffff",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 8px 20px rgba(15, 23, 42, 0.05)",
+        }}
+      >
+        <Typography
+          variant="caption"
+          sx={{
+            display: "block",
+            color: "#64748b",
+            fontWeight: 800,
+            mb: 1,
+          }}
+        >
+          Estado do cartão
+        </Typography>
 
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            gap: 1,
+          }}
+        >
+          {[
+            {
+              valor: "normal",
+              label: "Normal",
+              description: "Sem destaque especial",
+              bg: "#f8fafc",
+              color: "#334155",
+            },
+            {
+              valor: "verde",
+              label: "Permitido",
+              description: "Cartão marcado a verde",
+              bg: "#dcfce7",
+              color: "#166534",
+            },
+            {
+              valor: "vermelho",
+              label: "Atenção",
+              description: "Cartão marcado a vermelho",
+              bg: "#fee2e2",
+              color: "#991b1b",
+            },
+          ].map((estado) => {
+            const isSelected = estadoCartao === estado.valor;
 
+            return (
+              <Box
+                key={estado.valor}
+                onClick={() => setEstadoCartao(estado.valor)}
+                sx={{
+                  flex: 1,
+                  p: 1.5,
+                  borderRadius: 3,
+                  border: isSelected ? "2px solid #0f172a" : "1px solid #e2e8f0",
+                  backgroundColor: isSelected ? estado.bg : "#ffffff",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease-in-out",
+                  "&:hover": {
+                    backgroundColor: estado.bg,
+                  },
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 900,
+                    color: estado.color,
+                  }}
+                >
+                  {estado.label}
+                </Typography>
 
+                <Typography
+                  variant="caption"
+                  sx={{
+                    display: "block",
+                    color: "#64748b",
+                    mt: 0.25,
+                  }}
+                >
+                  {estado.description}
+                </Typography>
+              </Box>
+            );
+          })}
+        </Box>
+      </Box>
 
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 1,
+          mt: 0.5,
+        }}
+      >
+        <Button
+          variant="contained"
+          onClick={addMatricula}
+          disabled={loading}
+          sx={{
+            ...ui.primaryButton,
+            width: "100%",
+            py: 1.4,
+            fontSize: "1rem",
+          }}
+        >
+          {loading ? "A guardar..." : isEditing ? "Guardar alterações" : "Adicionar matrícula"}
+        </Button>
+
+        {isEditing && (
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => confirmDeleteMatricula(newMatricula)}
+            sx={{
+              width: "100%",
+              py: 1.4,
+              fontSize: "1rem",
+              fontWeight: 800,
+              textTransform: "none",
+              borderRadius: 2,
+              backgroundColor: "#dc2626",
+              "&:hover": {
+                backgroundColor: "#b91c1c",
+              },
+            }}
+          >
+            Apagar matrícula
+          </Button>
+        )}
 
         <Button
-  variant="contained"
-  onClick={addMatricula}
-  sx={{
-    mt: 2,
-    fontWeight: "bold",
-    py: 1.3,
-    fontSize: "1rem",
-    borderRadius: 2,
-    boxShadow: 2,
-    textTransform: "none",
-    backgroundColor: "#1b263b",
-    color: "white",
-    '&:hover': { backgroundColor: "#0d1b2a" }
-  }}
-  disabled={loading}
->
-  {loading ? "A guardar..." : "Salvar"}
-</Button>
+          variant="text"
+          onClick={() => {
+            setIsDialogOpen(false);
+            setNewMatricula("");
+            setNewContexto("");
+            setIsEditing(false);
+          }}
+          sx={{
+            width: "100%",
+            textTransform: "none",
+            fontWeight: 800,
+            color: "#64748b",
+          }}
+        >
+          Cancelar
+        </Button>
+      </Box>
+    </Box>
+  </DialogContent>
+</Dialog>
 
-{isEditing && (
-  <Button
-    variant="contained"
-    color="error"
-    onClick={() => confirmDeleteMatricula(newMatricula)}
-    sx={{
-      mt: 1.5,
-      fontWeight: "bold",
-      py: 1.3,
-      fontSize: "1rem",
-      borderRadius: 2,
-      textTransform: "none",
-      backgroundColor: "#d00000",
-      color: "white",
-      '&:hover': { backgroundColor: "#a80000" }
-    }}
-  >
-    Apagar
-  </Button>
-)}
-
-</DialogContent>
-
-
-      </Dialog>
 {/* Dialog para Listar Matrículas */}
 <Dialog open={isListOpen} onClose={() => setIsListOpen(false)} fullWidth maxWidth="sm">
 <DialogTitle
@@ -1711,69 +1925,242 @@ function MatriculaSearch({ handleLogout }) {
 </Dialog>
 
 
-      {/* Dialog para ver Histórico */}
+ {/* Dialog para ver Histórico */}
+<Dialog
+  open={historicoOpen}
+  onClose={() => {
+    setHistoricoOpen(false);
+    setHistoricoAtual([]);
+    setMatriculaEmFoco(null);
+  }}
+  fullWidth
+  maxWidth="sm"
+  PaperProps={{
+    sx: {
+      mx: 2,
+      borderRadius: 4,
+      overflow: "hidden",
+    },
+  }}
+>
+  <DialogTitle
+    sx={{
+      px: 3,
+      py: 2.5,
+      backgroundColor: "#0f172a",
+      color: "#ffffff",
+    }}
+  >
+    <Typography variant="h6" fontWeight={800}>
+      Histórico de visualizações
+    </Typography>
 
-      <Dialog
-        open={historicoOpen}
-        onClose={() => {
-          setHistoricoOpen(false);
-          setHistoricoAtual([]);
-          setMatriculaEmFoco(null);
-        }}
-        fullWidth
-        maxWidth="sm"
-      >
-  <DialogTitle>Histórico de visualizações - {matriculaEmFoco || ""}</DialogTitle>
-  <DialogContent>
+    <Typography variant="body2" sx={{ color: "#cbd5e1", mt: 0.5 }}>
+      {matriculaEmFoco || ""}
+    </Typography>
+  </DialogTitle>
+
+  <DialogContent
+    sx={{
+      backgroundColor: "#f8fafc",
+      p: 2,
+    }}
+  >
     {historicoAtual.length === 0 ? (
-      <Typography variant="body2" color="text.secondary">Sem histórico disponível.</Typography>
+      <Box
+        sx={{
+          p: 3,
+          borderRadius: 3,
+          backgroundColor: "#ffffff",
+          border: "1px solid #e2e8f0",
+          textAlign: "center",
+        }}
+      >
+        <Typography variant="body1" fontWeight={700} sx={{ color: "#0f172a" }}>
+          Sem histórico disponível
+        </Typography>
+
+        <Typography variant="body2" sx={{ color: "#64748b", mt: 0.5 }}>
+          Ainda não existem visualizações registadas para esta matrícula.
+        </Typography>
+      </Box>
     ) : (
-      <List>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
         {historicoAtual.map((item, index) => {
           const latitudeNumber = Number(item.latitude);
           const longitudeNumber = Number(item.longitude);
           const hasCoordenadas =
             Number.isFinite(latitudeNumber) && Number.isFinite(longitudeNumber);
 
-          let secondaryContent = "Localização não disponível";
+          const itemDate = new Date(item.data);
 
-          if (hasCoordenadas) {
-            const googleMapsLink = `https://www.google.com/maps?q=${latitudeNumber},${longitudeNumber}`;
-            const addressText = item.address?.trim();
-            const linkLabel = addressText && addressText.length > 0
-              ? addressText
-              : `Ver no Google Maps (${latitudeNumber.toFixed(6)}, ${longitudeNumber.toFixed(6)})`;
+          const dateText = itemDate.toLocaleDateString("pt-PT", {
+            weekday: "long",
+            day: "2-digit",
+            month: "2-digit",
+            year: "2-digit",
+          });
 
-            secondaryContent = (
-              <Link
-                href={googleMapsLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                underline="hover"
-              >
-                {linkLabel}
-              </Link>
-            );
-          }
+          const timeText = itemDate.toLocaleTimeString("pt-PT", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+
+          const googleMapsLink = hasCoordenadas
+            ? `https://www.google.com/maps?q=${latitudeNumber},${longitudeNumber}`
+            : null;
+
+          const addressText = item.address?.trim();
 
           return (
-            <ListItem key={index}>
-              <ListItemText
-                primary={`Vista em: ${new Date(item.data).toLocaleDateString("pt-PT", {
-                  weekday: "long",
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "2-digit"
-                })}, às ${new Date(item.data).toLocaleTimeString("pt-PT", {
-                  hour: "2-digit",
-                  minute: "2-digit"
-                })}`}
-                secondary={secondaryContent}
-              />
-            </ListItem>
+            <Card
+              key={`${item.data}-${index}`}
+              sx={{
+                borderRadius: 3,
+                border: "1px solid #e2e8f0",
+                boxShadow: "0 8px 20px rgba(15, 23, 42, 0.06)",
+                backgroundColor: "#ffffff",
+                overflow: "hidden",
+              }}
+            >
+              <CardContent sx={{ p: 2 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 1.5,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      minWidth: 42,
+                      height: 42,
+                      borderRadius: "50%",
+                      backgroundColor: "#e2e8f0",
+                      color: "#0f172a",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 900,
+                      fontSize: "0.9rem",
+                      border: "1px solid #cbd5e1",
+                    }}
+                  >
+                    {index + 1}
+                  </Box>
+
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        gap: 1,
+                        flexDirection: { xs: "column", sm: "row" },
+                      }}
+                    >
+                      <Box>
+                        <Typography
+                          variant="body1"
+                          fontWeight={800}
+                          sx={{ color: "#0f172a" }}
+                        >
+                          {dateText}
+                        </Typography>
+
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "#64748b", mt: 0.25 }}
+                        >
+                          às {timeText}
+                        </Typography>
+                      </Box>
+
+                      <Box
+                        sx={{
+                          px: 1.2,
+                          py: 0.5,
+                          borderRadius: 999,
+                          backgroundColor: hasCoordenadas ? "#dcfce7" : "#fee2e2",
+                          color: hasCoordenadas ? "#166534" : "#991b1b",
+                          fontSize: "0.75rem",
+                          fontWeight: 800,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {hasCoordenadas ? "Com localização" : "Sem localização"}
+                      </Box>
+                    </Box>
+
+                    <Box
+                      sx={{
+                        mt: 1.5,
+                        p: 1.5,
+                        borderRadius: 2,
+                        backgroundColor: "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          display: "block",
+                          color: "#64748b",
+                          fontWeight: 700,
+                          mb: 0.5,
+                        }}
+                      >
+                        Local
+                      </Typography>
+
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "#334155",
+                          lineHeight: 1.5,
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {hasCoordenadas
+                          ? addressText && addressText.length > 0
+                            ? addressText
+                            : `${latitudeNumber.toFixed(6)}, ${longitudeNumber.toFixed(6)}`
+                          : "Localização não disponível"}
+                      </Typography>
+                    </Box>
+
+                    {hasCoordenadas && (
+                      <Button
+                        component="a"
+                        href={googleMapsLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="outlined"
+                        fullWidth
+                        sx={{
+                          mt: 1.5,
+                          textTransform: "none",
+                          borderRadius: 2,
+                          fontWeight: 800,
+                          borderColor: "#cbd5e1",
+                          color: "#0f172a",
+                          backgroundColor: "#ffffff",
+                          "&:hover": {
+                            backgroundColor: "#f1f5f9",
+                            borderColor: "#94a3b8",
+                          },
+                        }}
+                      >
+                        Abrir no Google Maps
+                      </Button>
+                    )}
+                  </Box>
+                </Box>
+              </CardContent>
+            </Card>
           );
         })}
-      </List>
+      </Box>
     )}
   </DialogContent>
 </Dialog>
