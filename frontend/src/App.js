@@ -4,7 +4,7 @@ import {
   List, ListItem, ListItemButton, ListItemText, Typography, Box,
   IconButton, Snackbar, Alert, Link, MenuItem
 } from "@mui/material";
-import { Add, List as ListIcon } from "@mui/icons-material";
+import { Add, List as ListIcon, BarChart } from "@mui/icons-material";
 import { Edit } from "@mui/icons-material";
 import { Grow } from "@mui/material";
 import { History } from "@mui/icons-material";
@@ -27,14 +27,19 @@ const ui = {
     py: 3,
   },
 
-  headerCard: {
-    backgroundColor: "#ffffff",
-    border: "1px solid #e2e8f0",
-    borderRadius: 4,
-    boxShadow: "0 10px 25px rgba(15, 23, 42, 0.06)",
-    p: 3,
-    mb: 3,
-  },
+headerCard: {
+  position: { xs: "sticky", sm: "sticky" },
+  top: 0,
+  zIndex: 20,
+  backgroundColor: "rgba(255, 255, 255, 0.96)",
+  backdropFilter: "blur(12px)",
+  border: "1px solid #e2e8f0",
+  borderRadius: { xs: 0, sm: 4 },
+  boxShadow: "0 10px 25px rgba(15, 23, 42, 0.08)",
+  p: { xs: 2, sm: 3 },
+  mb: 3,
+  mx: { xs: -2, sm: 0 },
+},
 
   mainCard: {
     backgroundColor: "#ffffff",
@@ -469,6 +474,7 @@ function MatriculaSearch({ handleLogout }) {
   const [cor, setCor] = useState(""); 
   const [estadoCartao, setEstadoCartao] = useState("normal");
   const [sortMode, setSortMode] = useState("data_desc");
+  const [statsOpen, setStatsOpen] = useState(false);
 
   
 
@@ -784,6 +790,37 @@ function MatriculaSearch({ handleLogout }) {
       return new Date(b.data) - new Date(a.data);
   }
 });
+
+const todayKey = new Date().toLocaleDateString("pt-PT");
+
+const stats = {
+  total: matriculas.length,
+
+  vistasHoje: matriculas.filter((m) => {
+    if (!m.ultima_vista) return false;
+    return new Date(m.ultima_vista).toLocaleDateString("pt-PT") === todayKey;
+  }).length,
+
+  normal: matriculas.filter(
+    (m) => !m.contexto?.includes("✅") && !m.contexto?.includes("⛔️")
+  ).length,
+
+  permitido: matriculas.filter((m) => m.contexto?.includes("✅")).length,
+
+  atencao: matriculas.filter((m) => m.contexto?.includes("⛔️")).length,
+
+  comLocalizacao: matriculas.filter((m) => {
+    const lat = Number(m.latitude);
+    const lon = Number(m.longitude);
+    return Number.isFinite(lat) && Number.isFinite(lon);
+  }).length,
+
+  nuncaVistas: matriculas.filter((m) => !m.ultima_vista).length,
+};
+
+const mostRecentSeen = [...matriculas]
+  .filter((m) => m.ultima_vista)
+  .sort((a, b) => new Date(b.ultima_vista) - new Date(a.ultima_vista))[0];
 
   return (
 <Box sx={ui.page}>
@@ -1300,32 +1337,57 @@ function MatriculaSearch({ handleLogout }) {
       )}
 
 {/* Botões de Ação */}
-      <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2, flexWrap: "wrap" }}>
-
-           <Button
-  variant="contained"
-  startIcon={<Add />}
-  onClick={() => {
-    if (!isEditing) {
-      setNewMatricula(search);
-      setEstadoCartao("normal"); 
-    }
-    setIsDialogOpen(true);
+<Box
+  sx={{
+    display: "flex",
+    flexDirection: { xs: "column", sm: "row" },
+    justifyContent: "center",
+    gap: 1.5,
+    mt: 2,
   }}
-  sx={ui.primaryButton}
 >
-  Adicionar
-</Button>
+  <Button
+    variant="contained"
+    startIcon={<Add />}
+    onClick={() => {
+      if (!isEditing) {
+        setNewMatricula(search);
+        setEstadoCartao("normal");
+      }
+      setIsDialogOpen(true);
+    }}
+    sx={{
+      ...ui.primaryButton,
+      width: { xs: "100%", sm: "auto" },
+    }}
+  >
+    Adicionar
+  </Button>
 
-     <Button
-  variant="outlined"
-  startIcon={<ListIcon />}
-  onClick={listarTodas}
-  sx={ui.secondaryButton}
->
-  Listar todas
-</Button>
-      </Box>
+  <Button
+    variant="outlined"
+    startIcon={<ListIcon />}
+    onClick={listarTodas}
+    sx={{
+      ...ui.secondaryButton,
+      width: { xs: "100%", sm: "auto" },
+    }}
+  >
+    Listar todas
+  </Button>
+
+  <Button
+    variant="outlined"
+    startIcon={<BarChart />}
+    onClick={() => setStatsOpen(true)}
+    sx={{
+      ...ui.secondaryButton,
+      width: { xs: "100%", sm: "auto" },
+    }}
+  >
+    Estatísticas
+  </Button>
+</Box>
 
 {/* Dialog Adicionar/Editar Matrícula */}
 <Dialog
@@ -2228,6 +2290,154 @@ function MatriculaSearch({ handleLogout }) {
   </DialogContent>
 </Dialog>
 
+{/* Dialog de Estatísticas */}
+<Dialog
+  open={statsOpen}
+  onClose={() => setStatsOpen(false)}
+  fullWidth
+  maxWidth="sm"
+  PaperProps={{
+    sx: {
+      mx: 2,
+      borderRadius: 4,
+      overflow: "hidden",
+    },
+  }}
+>
+  <DialogTitle
+    sx={{
+      px: 3,
+      py: 2.5,
+      backgroundColor: "#0f172a",
+      color: "#ffffff",
+    }}
+  >
+    <Typography variant="h6" fontWeight={800}>
+      Estatísticas
+    </Typography>
+
+    <Typography variant="body2" sx={{ color: "#cbd5e1", mt: 0.5 }}>
+      Resumo rápido das matrículas registadas
+    </Typography>
+  </DialogTitle>
+
+  <DialogContent
+    sx={{
+      backgroundColor: "#f8fafc",
+      p: 2,
+    }}
+  >
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: { xs: "1fr 1fr", sm: "1fr 1fr 1fr" },
+        gap: 1.5,
+      }}
+    >
+      {[
+        { label: "Total", value: stats.total },
+        { label: "Vistas hoje", value: stats.vistasHoje },
+        { label: "Normal", value: stats.normal },
+        { label: "Permitido", value: stats.permitido },
+        { label: "Atenção", value: stats.atencao },
+        { label: "Com localização", value: stats.comLocalizacao },
+        { label: "Nunca vistas", value: stats.nuncaVistas },
+      ].map((item) => (
+        <Card
+          key={item.label}
+          sx={{
+            borderRadius: 3,
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 8px 20px rgba(15, 23, 42, 0.05)",
+          }}
+        >
+          <CardContent sx={{ p: 2 }}>
+            <Typography
+              variant="h5"
+              fontWeight={900}
+              sx={{ color: "#0f172a", lineHeight: 1 }}
+            >
+              {item.value}
+            </Typography>
+
+            <Typography
+              variant="caption"
+              sx={{
+                display: "block",
+                color: "#64748b",
+                fontWeight: 700,
+                mt: 0.75,
+              }}
+            >
+              {item.label}
+            </Typography>
+          </CardContent>
+        </Card>
+      ))}
+    </Box>
+
+    <Card
+      sx={{
+        mt: 1.5,
+        borderRadius: 3,
+        border: "1px solid #e2e8f0",
+        boxShadow: "0 8px 20px rgba(15, 23, 42, 0.05)",
+      }}
+    >
+      <CardContent sx={{ p: 2 }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "#64748b",
+            fontWeight: 800,
+            display: "block",
+            mb: 0.75,
+          }}
+        >
+          Última matrícula vista
+        </Typography>
+
+        {mostRecentSeen ? (
+          <>
+            <Typography variant="h5" fontWeight={900} sx={{ color: "#0f172a" }}>
+              {mostRecentSeen.id.toUpperCase()}
+            </Typography>
+
+            <Typography variant="body2" sx={{ color: "#64748b", mt: 0.5 }}>
+              {new Date(mostRecentSeen.ultima_vista).toLocaleDateString("pt-PT", {
+                weekday: "long",
+                day: "2-digit",
+                month: "2-digit",
+                year: "2-digit",
+              })}{" "}
+              às{" "}
+              {new Date(mostRecentSeen.ultima_vista).toLocaleTimeString("pt-PT", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Typography>
+          </>
+        ) : (
+          <Typography variant="body2" sx={{ color: "#64748b" }}>
+            Ainda não há visualizações registadas.
+          </Typography>
+        )}
+      </CardContent>
+    </Card>
+
+    <Button
+      variant="contained"
+      fullWidth
+      onClick={() => setStatsOpen(false)}
+      sx={{
+        ...ui.primaryButton,
+        mt: 2,
+      }}
+    >
+      Fechar
+    </Button>
+  </DialogContent>
+</Dialog>
 
       {/* Snackbar de sucesso - matrícula apagada */}
       <Snackbar

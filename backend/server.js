@@ -392,6 +392,53 @@ app.post("/matriculas/security/login-lock", (req, res) => {
 
 
 const PORT = process.env.PORT || 5000;
+
+app.get("/matriculas/stats/summary", async (req, res) => {
+  try {
+    const total = await pool.query("SELECT COUNT(*)::int AS total FROM matriculas");
+
+    const vistasHoje = await pool.query(`
+      SELECT COUNT(*)::int AS total
+      FROM historico_vistos
+      WHERE data::date = CURRENT_DATE
+    `);
+
+    const maisVista = await pool.query(`
+      SELECT 
+        m.id,
+        m.contexto,
+        m.cor,
+        COUNT(h.id)::int AS total_vistos
+      FROM matriculas m
+      LEFT JOIN historico_vistos h ON LOWER(h.matricula_id) = LOWER(m.id)
+      GROUP BY m.id, m.contexto, m.cor
+      ORDER BY total_vistos DESC
+      LIMIT 1
+    `);
+
+    const ultimaVista = await pool.query(`
+      SELECT 
+        m.id,
+        m.ultima_vista
+      FROM matriculas m
+      WHERE m.ultima_vista IS NOT NULL
+      ORDER BY m.ultima_vista DESC
+      LIMIT 1
+    `);
+
+    res.json({
+      total: total.rows[0]?.total ?? 0,
+      vistasHoje: vistasHoje.rows[0]?.total ?? 0,
+      maisVista: maisVista.rows[0] ?? null,
+      ultimaVista: ultimaVista.rows[0] ?? null,
+    });
+  } catch (error) {
+    console.error("Erro ao obter estatísticas:", error);
+    res.status(500).json({ error: "Erro ao obter estatísticas" });
+  }
+});
+
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Servidor a correr na porta ${PORT}`);
 });
