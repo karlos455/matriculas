@@ -1,8 +1,90 @@
 import React, { useState, useEffect, useRef } from "react";
-import { TextField, Button, Card, CardContent, Dialog, DialogTitle, DialogContent, List, ListItem, ListItemButton, ListItemText, Typography, Box, IconButton, Snackbar, Alert } from "@mui/material";
-import { Add, List as ListIcon, Delete, FileUpload } from "@mui/icons-material";
+import {
+  TextField, Button, Card, CardContent, Dialog, DialogTitle, DialogContent,
+  List, ListItem, ListItemButton, ListItemText, Typography, Box,
+  IconButton, Snackbar, Alert, Link
+} from "@mui/material";
+import { Add, List as ListIcon, Delete } from "@mui/icons-material";
+import { Edit } from "@mui/icons-material";
+import { Grow } from "@mui/material";
+import { History } from "@mui/icons-material";
+
 
 const API_URL = "https://matriculas.casadocarlos.info/matriculas";
+
+const ui = {
+  page: {
+    minHeight: "100vh",
+    backgroundColor: "#f8fafc",
+    color: "#0f172a",
+  },
+
+  container: {
+    maxWidth: 720,
+    mx: "auto",
+    px: 2,
+    py: 3,
+  },
+
+  headerCard: {
+    backgroundColor: "#ffffff",
+    border: "1px solid #e2e8f0",
+    borderRadius: 4,
+    boxShadow: "0 10px 25px rgba(15, 23, 42, 0.06)",
+    p: 3,
+    mb: 3,
+  },
+
+  mainCard: {
+    backgroundColor: "#ffffff",
+    border: "1px solid #e2e8f0",
+    borderRadius: 4,
+    boxShadow: "0 10px 25px rgba(15, 23, 42, 0.08)",
+    p: 2,
+  },
+
+  primaryButton: {
+    backgroundColor: "#0f172a",
+    color: "#ffffff",
+    fontWeight: 700,
+    textTransform: "none",
+    borderRadius: 2,
+    px: 3,
+    py: 1.2,
+    "&:hover": {
+      backgroundColor: "#1e293b",
+    },
+  },
+
+  secondaryButton: {
+    backgroundColor: "#ffffff",
+    color: "#0f172a",
+    border: "1px solid #cbd5e1",
+    fontWeight: 700,
+    textTransform: "none",
+    borderRadius: 2,
+    px: 3,
+    py: 1.2,
+    "&:hover": {
+      backgroundColor: "#f1f5f9",
+      borderColor: "#94a3b8",
+    },
+  },
+
+  successButton: {
+    backgroundColor: "#166534",
+    color: "#ffffff",
+    fontWeight: 700,
+    textTransform: "none",
+    borderRadius: 2,
+    px: 3,
+    py: 1.2,
+    "&:hover": {
+      backgroundColor: "#14532d",
+    },
+  },
+};
+
 
 // ---------------------  PAGINA LOGIN  ---------------------
 
@@ -37,30 +119,249 @@ export default function App() {
 // **Splash Screen de Login**
 
 function SplashScreen({ handleLogin }) {
+  const MAX_FAILED_ATTEMPTS = 5;
+  const LOCK_DURATION_MS = 60_000;
+  const SECURITY_STORAGE_KEY = "loginSecurity";
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState("error");
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockUntil, setLockUntil] = useState(null);
+  const [lockRemaining, setLockRemaining] = useState(0);
+  const [clientIp, setClientIp] = useState(null);
+  const [securityReady, setSecurityReady] = useState(false);
   const loginButtonRef = useRef(null);
-
+  const lastReportedLockRef = useRef(null);
+  const clearSecurityStateRef = useRef(() => {});
+  
   useEffect(() => {
     if (loginButtonRef.current) {
       loginButtonRef.current.focus(); // Dá foco ao botão "Entrar"
     }
   }, []);
 
+  const isLocked = lockRemaining > 0;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const readSecurityState = (ip) => {
+      if (!isMounted || !ip) return;
+      const storageKey = `${SECURITY_STORAGE_KEY}:${ip}`;
+      const stored = localStorage.getItem(storageKey);
+      if (!stored) {
+        setFailedAttempts(0);
+        setLockUntil(null);
+        setLockRemaining(0);
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(stored);
+        const storedFailedAttempts = Number.isFinite(parsed?.failedAttempts)
+          ? parsed.failedAttempts
+          : 0;
+        const storedLockUntil =
+          typeof parsed?.lockUntil === "number" ? parsed.lockUntil : null;
+
+        if (storedLockUntil && storedLockUntil > Date.now()) {
+          setLockUntil(storedLockUntil);
+          setLockRemaining(storedLockUntil - Date.now());
+          setFailedAttempts(
+            Math.min(Math.max(storedFailedAttempts, 0), MAX_FAILED_ATTEMPTS)
+          );
+        } else {
+          const sanitizedAttempts = Math.min(
+            Math.max(storedFailedAttempts, 0),
+            MAX_FAILED_ATTEMPTS
+          );
+          setFailedAttempts(sanitizedAttempts);
+          setLockUntil(null);
+          setLockRemaining(0);
+          if (sanitizedAttempts === 0) {
+            localStorage.removeItem(storageKey);
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao restaurar estado de segurança:", error);
+        localStorage.removeItem(storageKey);
+        setFailedAttempts(0);
+        setLockUntil(null);
+        setLockRemaining(0);
+      }
+    };
+
+    const fetchClientIp = async () => {
+      try {
+        const response = await fetch("https://api.ipify.org?format=json");
+        if (!response.ok) {
+          throw new Error("Falha ao obter IP");
+        }
+        const data = await response.json();
+        if (!isMounted) return;
+        const ip = data?.ip || "unknown";
+        setClientIp(ip);
+        readSecurityState(ip);
+      } catch (error) {
+        console.error("Erro ao obter IP do cliente:", error);
+        if (!isMounted) return;
+        const fallbackIp = "local-fallback";
+        setClientIp(fallbackIp);
+        readSecurityState(fallbackIp);
+      } finally {
+        if (isMounted) {
+          setSecurityReady(true);
+        }
+      }
+    };
+
+    fetchClientIp();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    clearSecurityStateRef.current = () => {
+      if (!clientIp) return;
+      const storageKey = `${SECURITY_STORAGE_KEY}:${clientIp}`;
+      try {
+        localStorage.removeItem(storageKey);
+      } catch (error) {
+        console.warn("⚠️ Erro ao limpar estado de segurança:", error);
+      }
+      lastReportedLockRef.current = null;
+    };
+  }, [clientIp]);
+
+  useEffect(() => {
+    if (!clientIp) return;
+    const storageKey = `${SECURITY_STORAGE_KEY}:${clientIp}`;
+    if (!lockUntil && failedAttempts === 0) {
+      try {
+        localStorage.removeItem(storageKey);
+      } catch (error) {
+        console.warn("⚠️ Erro ao limpar estado de segurança:", error);
+      }
+      return;
+    }
+
+    const payload = {
+      failedAttempts,
+      lockUntil,
+    };
+
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(payload));
+    } catch (error) {
+      console.error("Erro ao guardar estado de segurança:", error);
+    }
+  }, [clientIp, failedAttempts, lockUntil]);
+
+  useEffect(() => {
+    if (!lockUntil) {
+      setLockRemaining(0);
+      return undefined;
+    }
+
+    const updateLockRemaining = () => {
+      const remaining = lockUntil - Date.now();
+
+      if (remaining <= 0) {
+        setLockUntil(null);
+        setLockRemaining(0);
+      } else {
+        setLockRemaining(remaining);
+      }
+    };
+
+    updateLockRemaining();
+    const intervalId = setInterval(updateLockRemaining, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [lockUntil]);
+
+  const openSnackbar = (message, severity = "error") => {
+    setSnackbarMessage(message);
+    setSnackbarSeverity(severity);
+    setSnackbarOpen(true);
+  };
+
   const login = (e) => {
     if (e.key === "Enter" || e.type === "click") {
+      if (!securityReady) {
+        openSnackbar("Aguarde enquanto verificamos a segurança...", "info");
+        return;
+      }
+
+      if (isLocked) {
+        openSnackbar(
+          `Muitas tentativas. Tente novamente em ${Math.ceil(lockRemaining / 1000)} segundos.`,
+          "warning"
+        );
+        return;
+      }
+
       const adminUsername = process.env.REACT_APP_ADMIN_USERNAME;
       const adminPassword = process.env.REACT_APP_ADMIN_PASSWORD;
-  
+
       if (username === adminUsername && password === adminPassword) {
+        clearSecurityStateRef.current();
+        setFailedAttempts(0);
+        setLockUntil(null);
+        setLockRemaining(0);
         handleLogin();
       } else {
-        setSnackbarOpen(true);
+        const nextFailedAttempts = failedAttempts + 1;
+        if (nextFailedAttempts >= MAX_FAILED_ATTEMPTS) {
+          const until = Date.now() + LOCK_DURATION_MS;
+          setFailedAttempts(0);
+          setLockUntil(until);
+          setLockRemaining(LOCK_DURATION_MS);
+          openSnackbar(
+            "Muitas tentativas falhadas. O login foi temporariamente bloqueado.",
+            "warning"
+          );
+        } else {
+          setFailedAttempts(nextFailedAttempts);
+          const remainingAttempts = MAX_FAILED_ATTEMPTS - nextFailedAttempts;
+          openSnackbar(
+            `Credenciais inválidas! ${remainingAttempts} tentativa${
+              remainingAttempts === 1 ? "" : "s"
+            } restante${remainingAttempts === 1 ? "" : "s"}.`,
+            "error"
+          );
+        }
       }
     }
   };
-  
+
+  useEffect(() => {
+    if (!clientIp || !lockUntil) return;
+    if (lockUntil <= Date.now()) return;
+
+    const reportedKey = `${clientIp}:${lockUntil}`;
+    if (lastReportedLockRef.current === reportedKey) return;
+    lastReportedLockRef.current = reportedKey;
+
+    const notifyLock = async () => {
+      try {
+        await fetch(`${API_URL}/security/login-lock`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ip: clientIp, lockUntil }),
+        });
+      } catch (error) {
+        console.warn("⚠️ Falha ao reportar bloqueio de IP:", error);
+      }
+    };
+
+    notifyLock();
+  }, [clientIp, lockUntil]);
 
   return (
     <Box sx={{
@@ -68,39 +369,63 @@ function SplashScreen({ handleLogin }) {
       backgroundImage: "url('https://picsum.photos/1920/1200')",
       backgroundSize: "cover", backgroundPosition: "center", textAlign: "center"
     }}>
-      <Card sx={{ padding: 4, boxShadow: 3, backdropFilter: "blur(10px)", background: "rgba(255, 255, 255, 0.2)" }}>
+      <Card sx={{
+        padding: 4, boxShadow: 3, backdropFilter: "blur(10px)",
+        background: "rgba(255, 255, 255, 0.2)"
+      }}>
         <Typography variant="h4" fontWeight="bold" gutterBottom>Bem-vindo</Typography>
-        <TextField 
-          label="Username" 
-          fullWidth 
-          onChange={(e) => setUsername(e.target.value)} 
-          sx={{ mb: 2 }} 
+        <TextField
+          label="Username"
+          fullWidth
+          onChange={(e) => setUsername(e.target.value)}
+          sx={{ mb: 2 }}
           onKeyDown={login} // Permite pressionar Enter para login
+          disabled={isLocked || !securityReady}
         />
-        <TextField 
-          label="Password" 
-          type="password" 
-          fullWidth 
-          onChange={(e) => setPassword(e.target.value)} 
-          sx={{ mb: 2 }} 
+        <TextField
+          label="Password"
+          type="password"
+          fullWidth
+          onChange={(e) => setPassword(e.target.value)}
+          sx={{ mb: 2 }}
           onKeyDown={login} // Permite pressionar Enter para login
+          disabled={isLocked || !securityReady}
         />
-        <Button 
-          variant="contained" 
-          fullWidth 
-          onClick={login} 
+        <Button
+          variant="contained"
+          fullWidth
+          onClick={login}
+          disabled={isLocked || !securityReady}
           ref={loginButtonRef} // Define o botão como referência para o focus automático
         >
-          Entrar
+          {!securityReady
+            ? "Aguarde..."
+            : isLocked
+            ? `Bloqueado (${Math.ceil(lockRemaining / 1000)}s)`
+            : "Entrar"}
         </Button>
+        {securityReady && failedAttempts > 0 && !isLocked && (
+          <Typography variant="body2" sx={{ mt: 2 }}>
+            {`Tentativas restantes: ${MAX_FAILED_ATTEMPTS - failedAttempts}`}
+          </Typography>
+        )}
+        {!securityReady && (
+          <Typography variant="body2" sx={{ mt: 2 }}>
+            A preparar segurança de login...
+          </Typography>
+        )}
         <Snackbar
           open={snackbarOpen}
           autoHideDuration={3000}
           onClose={() => setSnackbarOpen(false)}
           anchorOrigin={{ vertical: "top", horizontal: "center" }}
         >
-          <Alert onClose={() => setSnackbarOpen(false)} severity="error" sx={{ width: "100%" }}>
-             Credenciais inválidas!
+          <Alert
+            onClose={() => setSnackbarOpen(false)}
+            severity={snackbarSeverity}
+            sx={{ width: "100%" }}
+          >
+            {snackbarMessage}
           </Alert>
         </Snackbar>
       </Card>
@@ -121,28 +446,92 @@ function MatriculaSearch({ handleLogout }) {
   const [newMatricula, setNewMatricula] = useState("");
   const [newContexto, setNewContexto] = useState("");
   const [alertOpen, setAlertOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editMatricula, setEditMatricula] = useState(null);
-  const [editId, setEditId] = useState("");
-  const [editContexto, setEditContexto] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [matriculaOriginal, setMatriculaOriginal] = useState("");
+  const [successToast, setSuccessToast] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [deleteToast, setDeleteToast] = useState(false);
+  const [successSeenToast, setSuccessSeenToast] = useState(false);
+  const [historicoOpen, setHistoricoOpen] = useState(false);
+  const [historicoAtual, setHistoricoAtual] = useState([]);
+  const [matriculaEmFoco, setMatriculaEmFoco] = useState(null);
+  const [successAddedToast, setSuccessAddedToast] = useState(false);
+  const [highlightCard, setHighlightCard] = useState(false);
+  const isGreenHighlight = selected?.contexto?.includes("✅");
+  const isRedHighlight = selected?.contexto?.includes("⛔️");
+  const hasLocation =
+    Number.isFinite(selected?.latitude) && Number.isFinite(selected?.longitude);
+  const googleMapsLink = hasLocation
+    ? `https://www.google.com/maps?q=${selected?.latitude},${selected?.longitude}`
+    : null;
+  const appleMapsLink = hasLocation
+    ? `https://maps.apple.com/?ll=${selected?.latitude},${selected?.longitude}`
+    : null;
+  const [cor, setCor] = useState(""); 
+  const [estadoCartao, setEstadoCartao] = useState("normal");
+
+  const requestCurrentLocation = () =>
+    new Promise((resolve) => {
+      if (typeof navigator === "undefined" || !navigator.geolocation) {
+        resolve(null);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.warn("⚠️ Não foi possível obter a localização atual:", error);
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    });
+
+  const abrirHistorico = (id) => {
+    if (!id) return;
+
+    const idFormatado = id.toLowerCase();
+
+    fetch(`${API_URL}/${idFormatado}/historico`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Erro ao buscar histórico");
+        return res.json();
+      })
+      .then((data) => {
+        setHistoricoAtual(Array.isArray(data) ? data : []);
+        setMatriculaEmFoco(id.toUpperCase());
+        setHistoricoOpen(true);
+      })
+      .catch((err) => console.error("❌ Erro ao buscar histórico:", err));
+  };
+
 
   const handleSelect = (matricula) => {
     setSelected(matricula);
     setSearch("");
+    setIsListOpen(false);
+    setHighlightCard(true);
+    setTimeout(() => setHighlightCard(false), 800);
   };
 
   const filtered = search.trim() && !selected
-    ? matriculas.filter((m) => m.id.toLowerCase().includes(search.toLowerCase()))
+    ? matriculas.filter((m) =>
+        m.id.toLowerCase().includes(search.toLowerCase()) ||
+        m.contexto?.toLowerCase().includes(search.toLowerCase())
+      )
     : [];
 
   // **Buscar todas as matrículas**
   const fetchMatriculas = () => {
     fetch(API_URL)
       .then((res) => res.json())
-      .then((data) => {
-        setMatriculas(data);
-      })
-      .catch((error) => console.error("❌ Erro ao pesquisar matrículas:", error));
+      .then((data) => setMatriculas(data))
+      .catch((error) => console.error("❌ Erro ao buscar matrículas:", error));
   };
 
   useEffect(() => {
@@ -155,34 +544,134 @@ function MatriculaSearch({ handleLogout }) {
     setIsListOpen(true);
   };
 
-  // **Adicionar matrícula**
-  const addMatricula = () => {
-    if (!newMatricula.trim()) return;
 
-    if (matriculas.some((m) => m.id.toLowerCase() === newMatricula.toLowerCase())) {
+
+  // **Marcar como visto por último**
+  const marcarComoVisto = async (id) => {
+    const idFormatado = id.toLowerCase();
+    let coords = null;
+
+    try {
+      coords = await requestCurrentLocation();
+    } catch (error) {
+      console.error("❌ Erro ao obter localização atual:", error);
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/${idFormatado}/visto`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          latitude: coords?.latitude ?? null,
+          longitude: coords?.longitude ?? null,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Erro ao marcar como visto");
+      }
+
+      const data = await res.json();
+
+      fetchMatriculas();
+
+      if (selected?.id.toLowerCase() === idFormatado) {
+        setSelected(data);
+      }
+
+      setSuccessSeenToast(true);
+    } catch (err) {
+      console.error("❌ Erro ao atualizar visto:", err);
+    }
+  };
+
+
+
+  // **Adicionar matrícula**
+  const addMatricula = async () => {
+    const idNormalizado = newMatricula.trim().toLowerCase();
+    if (!idNormalizado) return;
+
+    if (!isEditing && matriculas.some((m) => m.id.toLowerCase() === idNormalizado)) {
       setAlertOpen(true);
       return;
     }
 
-    const novaMatricula = { id: newMatricula, contexto: newContexto || "" };
+    let contextoFinal = newContexto.trim();
 
-    fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(novaMatricula),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Erro ao adicionar matrícula");
-        return res.json();
-      })
-      .then((data) => {
-        setMatriculas((prev) => [...prev, data]);
-        setNewMatricula("");
-        setNewContexto("");
-        setIsDialogOpen(false);
-      })
-      .catch((error) => console.error("❌ Erro ao adicionar matrícula:", error));
+    if (estadoCartao === "verde") contextoFinal = `✅ ${contextoFinal}`;
+    else if (estadoCartao === "vermelho") contextoFinal = `⛔️ ${contextoFinal}`;
+
+    const method = isEditing ? "PUT" : "POST";
+    const url = isEditing ? `${API_URL}/${matriculaOriginal.toLowerCase()}` : API_URL;
+
+    setLoading(true);
+
+    try {
+      let locationPayload = { latitude: null, longitude: null };
+
+      if (isEditing) {
+        const original = matriculas.find(
+          (m) => m.id.toLowerCase() === matriculaOriginal.toLowerCase()
+        );
+        locationPayload = {
+          latitude: original?.latitude ?? null,
+          longitude: original?.longitude ?? null,
+        };
+      } else {
+        const coords = await requestCurrentLocation();
+        if (coords) {
+          locationPayload = coords;
+        }
+      }
+
+      const novaMatricula = {
+        id: idNormalizado,
+        contexto: contextoFinal,
+        cor,
+        latitude: locationPayload.latitude,
+        longitude: locationPayload.longitude,
+      };
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(novaMatricula),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro ao guardar matrícula");
+      }
+
+      const updatedMatricula = await response.json();
+
+      fetchMatriculas();
+      setNewMatricula("");
+      setNewContexto("");
+      setIsDialogOpen(false);
+
+      if (
+        isEditing &&
+        selected?.id?.toLowerCase() === matriculaOriginal.toLowerCase()
+      ) {
+        setSelected(updatedMatricula);
+      }
+
+      setSelected(updatedMatricula);
+
+      if (isEditing) {
+        setSuccessToast(true);
+      } else {
+        setSuccessAddedToast(true);
+      }
+    } catch (error) {
+      console.error("❌ Erro ao guardar matrícula:", error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // ------- //
 
   // **Confirmar exclusão**
   const confirmDeleteMatricula = (id) => {
@@ -190,52 +679,911 @@ function MatriculaSearch({ handleLogout }) {
     setDeleteConfirmOpen(true);
   };
 
+  const editMatricula = (matricula) => {
+    setIsDialogOpen(true);
+    setNewMatricula(matricula.id);
+    setNewContexto(matricula.contexto?.replace(/✅|⛔️/g, "").trim());
+    setCor(matricula.cor || "");
+    setMatriculaOriginal(matricula.id);
+    setIsEditing(true);
+  
+    if (matricula.contexto?.includes("✅")) {
+      setEstadoCartao("verde");
+    } else if (matricula.contexto?.includes("⛔️")) {
+      setEstadoCartao("vermelho");
+    } else {
+      setEstadoCartao("normal");
+    }
+  };
+  
+
   // **Apagar matrícula**
   const deleteMatricula = () => {
     if (!matriculaToDelete) return;
 
-    fetch(`${API_URL}/${matriculaToDelete}`, { method: "DELETE" })
+    const idFormatado = matriculaToDelete.toLowerCase();
+
+    fetch(`${API_URL}/${idFormatado}`, { method: "DELETE" })
       .then((res) => {
         if (!res.ok) throw new Error("Erro ao apagar matrícula");
-        setMatriculas((prev) => prev.filter((m) => m.id !== matriculaToDelete));
+
+        setMatriculas((prev) => prev.filter((m) => m.id.toLowerCase() !== idFormatado));
         setDeleteConfirmOpen(false);
         setMatriculaToDelete(null);
+
+        // Limpa o cartão se a matrícula visível for a apagada
+        if (selected?.id.toLowerCase() === idFormatado) {
+          setSelected(null);
+        }
+
+
+        setDeleteToast(true);
+        setIsDialogOpen(false);
+        setNewMatricula("");
+        setNewContexto("");
+        setIsEditing(false);
+
       })
       .catch((error) => console.error("❌ Erro ao apagar matrícula:", error));
   };
 
-
-  const openEditDialog = (matricula) => {
-    setEditMatricula(matricula);
-    setEditId(matricula.id);
-    setEditContexto(matricula.contexto);
-    setEditDialogOpen(true);
-  };
-
-  const saveEdit = () => {
-    if (!editId.trim()) return;
-
-    fetch(`${API_URL}/${editMatricula.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: editId, contexto: editContexto })
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Erro ao editar matrícula");
-        return res.json();
-      })
-      .then((updated) => {
-        setMatriculas((prev) => prev.map((m) => (m.id === editMatricula.id ? updated : m)));
-        setEditDialogOpen(false);
-        setEditMatricula(null);
-      })
-      .catch((err) => console.error("❌ Erro ao editar matrícula:", err));
-  };
-
-
   return (
-    <Box sx={{ padding: 2, maxWidth: 600, width: "100%", margin: "auto", textAlign: "center" }}>
-      <Typography variant="h4" gutterBottom fontWeight="bold">Search</Typography>
+<Box sx={ui.page}>
+  <Box sx={ui.container}>
+
+<Box sx={ui.headerCard}>
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 2,
+      mb: 2,
+    }}
+  >
+    <Box sx={{ textAlign: "left" }}>
+      <Typography
+        variant="h4"
+        fontWeight={800}
+        sx={{ letterSpacing: "-0.03em", cursor: "pointer" }}
+        onClick={() => {
+          fetchMatriculas();
+          setSelected(null);
+          setSearch("");
+        }}
+      >
+        Matrículas
+      </Typography>
+
+      <Typography variant="body2" sx={{ color: "#64748b", mt: 0.5 }}>
+        Pesquisa, histórico e registo de veículos
+      </Typography>
+    </Box>
+
+    <Button
+      variant="outlined"
+      onClick={handleLogout}
+      sx={{
+        textTransform: "none",
+        borderRadius: 2,
+        fontWeight: 700,
+      }}
+    >
+      Sair
+    </Button>
+  </Box>
+
+  <TextField
+    label="Procurar matrícula ou observações"
+    fullWidth
+    value={search}
+    onChange={(e) => {
+      setSearch(e.target.value.trim());
+      setSelected(null);
+    }}
+    sx={{
+      "& .MuiOutlinedInput-root": {
+        borderRadius: 3,
+        backgroundColor: "#f8fafc",
+      },
+    }}
+  />
+</Box>
+
+
+
+      {/* Lista de Resultados da Pesquisa */}
+      {filtered.length > 0 && (
+  <List sx={{ px: 0, pt: 1, maxHeight: 240, overflowY: "auto" }}>
+    {filtered.map((m) => (
+      <ListItem key={m.id} disablePadding>
+        <ListItemButton
+          onClick={() => handleSelect(m)}
+          sx={{
+            backgroundColor: m.contexto?.includes("✅")
+              ? "#e6f4ea"
+              : m.contexto?.includes("⛔️")
+              ? "#fbeaea"
+              : "#fefefe",
+            "&:hover": {
+              backgroundColor: m.contexto?.includes("✅")
+                ? "#d2ebd9"
+                : m.contexto?.includes("⛔️")
+                ? "#f4dcdc"
+                : "#f7f7f7",
+              boxShadow: "0 2px 6px rgba(0, 0, 0, 0.1)",
+            },
+            transition: "all 0.25s ease-in-out",
+            borderRadius: 2,
+            m: 1,
+            px: 2,
+            py: 1.5,
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+          }}
+        >
+          <ListItemText
+            primary={
+              <Typography fontWeight="bold" sx={{ color: "#1b263b" }}>
+                {m.id.toUpperCase()}
+              </Typography>
+            }
+            secondary={
+              <Typography variant="body2" sx={{ color: "#444", fontSize: "0.85rem" }}>
+                {m.contexto?.replace(/✅|⛔️/g, "").trim()}
+              </Typography>
+            }
+          />
+        </ListItemButton>
+      </ListItem>
+    ))}
+  </List>
+)}
+
+
+
+      {/* Cartão de Detalhes com animação */}
+      {selected && (
+        <Grow in={true} timeout={300}>
+          <Box>
+            {(() => {
+              const isGreenHighlight = selected.contexto?.includes("✅");
+              const isRedHighlight = selected.contexto?.includes("⛔️");
+
+              return (
+<Card
+  sx={{
+    mt: 4,
+    textAlign: "center",
+    boxShadow: 3,
+    borderRadius: 3,
+    p: 2,
+    backgroundColor: isGreenHighlight
+      ? "#e6f4ea"
+      : isRedHighlight
+      ? "#fbeaea"
+      : "#fefefe",
+    border: highlightCard ? "2px solid #64b5f6" : "2px solid transparent",
+    transition: "border 0.4s ease, background-color 0.4s ease",
+  }}
+>
+
+
+  <CardContent>
+  <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: 1, mb: 1 }}>
+  {selected.id.toUpperCase()}
+  </Typography>
+
+
+{selected.cor && (
+  <Box sx={{ display: "flex", justifyContent: "center", mt: 1 }}>
+  <Box
+    sx={{
+      width: 16,
+      height: 16,
+      borderRadius: "50%",
+      backgroundColor: selected.cor,
+      border: "1px solid #999"
+    }}
+  />
+</Box>
+
+
+)}
+
+          <Typography variant="body1" sx={{ mt: 1, fontSize: "0.95rem", color: "#333" }}>
+            {selected.contexto?.replace(/✅|⛔️/g, "").trim()}
+          </Typography>
+
+  {hasLocation && (
+    <Box sx={{ mt: 2 }}>
+      <Typography
+        variant="caption"
+        sx={{ display: "block", color: "text.secondary", mb: 1, textTransform: "uppercase", letterSpacing: 0.5 }}
+      >
+        Localização guardada
+      </Typography>
+      <Box
+        sx={{
+          borderRadius: 2,
+          overflow: "hidden",
+          border: "1px solid rgba(0,0,0,0.12)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+        }}
+      >
+        <iframe
+          title={`Mapa da matrícula ${selected.id}`}
+          src={`https://maps.google.com/maps?q=${selected.latitude},${selected.longitude}&z=16&output=embed`}
+          width="100%"
+          height="220"
+          style={{ border: 0 }}
+          loading="lazy"
+          allowFullScreen
+        />
+      </Box>
+      <Box sx={{ display: "flex", justifyContent: "center", gap: 1.5, mt: 1.5, flexWrap: "wrap" }}>
+        {googleMapsLink && (
+          <Button
+            component="a"
+            href={googleMapsLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="text"
+            sx={{ textTransform: "none", fontWeight: 600 }}
+          >
+            Abrir no Google Maps
+          </Button>
+        )}
+        {appleMapsLink && (
+          <Button
+            component="a"
+            href={appleMapsLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="text"
+            sx={{ textTransform: "none", fontWeight: 600 }}
+          >
+            Abrir no Apple Maps
+          </Button>
+        )}
+      </Box>
+    </Box>
+  )}
+
+
+
+    <Typography variant="caption" sx={{ display: "block", mt: 1, fontSize: "0.75rem", color: "text.secondary" }}>
+    Adicionado em:{" "}
+      {new Date(selected.data).toLocaleDateString("pt-PT", {
+        weekday: "long",
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+      })}, às{" "}
+      {new Date(selected.data).toLocaleTimeString("pt-PT", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}
+    </Typography>
+
+    {selected.ultima_vista && (
+      <Typography variant="caption" sx={{ display: "block", fontSize: "0.75rem", color: "text.secondary" }}>
+
+        Última vez visto:{" "}
+        {new Date(selected.ultima_vista).toLocaleDateString("pt-PT", {
+          weekday: "long",
+          day: "2-digit",
+          month: "2-digit",
+          year: "2-digit",
+        })}, às{" "}
+        {new Date(selected.ultima_vista).toLocaleTimeString("pt-PT", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
+      </Typography>
+    )}
+
+    {/* Botões */}
+    <Box
+  sx={{
+    display: "flex",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 2,
+    mt: 2,
+  }}
+>
+  {/* Visto Agora */}
+<Button
+  variant="contained"
+  sx={{
+    ...ui.successButton,
+    flex: "1 1 40%",
+    maxWidth: 180,
+  }}
+  onClick={() => marcarComoVisto(selected.id)}
+>
+  Visto agora
+</Button>
+
+  {/* Histórico */}
+  <Button
+    variant="contained"
+    sx={{
+      backgroundColor: "#1b263b",
+      color: "white",
+      fontWeight: "bold",
+      textTransform: "uppercase",
+      px: 3,
+      py: 1.5,
+      borderRadius: 2,
+      flex: "1 1 40%",
+      maxWidth: 180,
+      '&:hover': { backgroundColor: "#0d1b2a" }
+    }}
+    onClick={() => abrirHistorico(selected.id)}
+  >
+    Histórico
+  </Button>
+
+  {/* Editar - linha completa */}
+  <Button
+    variant="contained"
+    sx={{
+      backgroundColor: "#1b263b",
+      color: "white",
+      fontWeight: "bold",
+      textTransform: "uppercase",
+      px: 3,
+      py: 1.5,
+      borderRadius: 2,
+      width: "100%",
+      '&:hover': { backgroundColor: "#0d1b2a" }
+    }}
+    onClick={() => editMatricula(selected)}
+  >
+    Editar
+  </Button>
+</Box>
+
+  </CardContent>
+</Card>
+
+              );
+            })()}
+          </Box>
+        </Grow>
+      )}
+
+{/* Botões de Ação */}
+      <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2, flexWrap: "wrap" }}>
+
+           <Button
+  variant="contained"
+  startIcon={<Add />}
+  onClick={() => {
+    if (!isEditing) {
+      setNewMatricula(search);
+      setEstadoCartao("normal"); 
+    }
+    setIsDialogOpen(true);
+  }}
+  sx={ui.primaryButton}
+>
+  Adicionar
+</Button>
+
+     <Button
+  variant="outlined"
+  startIcon={<ListIcon />}
+  onClick={listarTodas}
+  sx={ui.secondaryButton}
+>
+  Listar todas
+</Button>
+      </Box>
+
+
+      {/* Dialog Adicionar/Editar Matrícula */}
+      <Dialog
+        open={isDialogOpen}
+        onClose={() => {
+          setIsDialogOpen(false);
+          setNewMatricula("");
+          setNewContexto("");
+          setIsEditing(false);
+        }}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { mx: 2, borderRadius: 3 } }}
+      >
+        <DialogTitle
+          sx={{ display: "flex", alignItems: "center", gap: 1, fontWeight: "bold", fontSize: "1.4rem", textAlign: "center", justifyContent: "center" }}
+        >
+          <Add fontSize="medium" />
+          {isEditing ? "Editar Matrícula" : "Adicionar Matrícula"}
+        </DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <TextField
+          label="Matrícula"
+          fullWidth
+          required
+          value={newMatricula}
+          onChange={(e) => setNewMatricula(e.target.value)}
+          variant="outlined"
+          InputLabelProps={{ shrink: true }}
+          disabled={isEditing}
+        />
+
+        <TextField
+          label="Observações"
+          fullWidth
+          multiline
+          minRows={1}
+          value={newContexto}
+          onChange={(e) => setNewContexto(e.target.value)}
+          variant="outlined"
+          InputLabelProps={{ shrink: true }}
+        />
+
+<Typography variant="body2" sx={{ mt: 2 }}>
+  Cor:
+</Typography>
+
+<Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mt: 1 }}>
+  {/* Opção para remover cor */}
+  <Box
+    onClick={() => setCor("")}
+    sx={{
+      width: 36,
+      height: 36,
+      borderRadius: "50%",
+      border: "2px dashed #999",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: "0.8rem",
+      cursor: "pointer",
+      color: "#999",
+      "&:hover": {
+        backgroundColor: "#f0f0f0"
+      },
+      outline: cor === "" ? "3px solid #1b263b" : "none",
+      outlineOffset: 2
+    }}
+    title="Sem cor"
+  >
+    ✕
+  </Box>
+
+  {/* Cores disponíveis */}
+  {["white", "red", "blue", "black", "gray", "silver", "green", "yellow"].map((colorOption) => {
+    const isSelected = cor === colorOption;
+
+    return (
+      <Box
+        key={colorOption}
+        onClick={() => setCor(colorOption)}
+        sx={{
+          width: 36,
+          height: 36,
+          borderRadius: "50%",
+          backgroundColor: colorOption,
+          border: "1.5px solid #ccc",
+          cursor: "pointer",
+          transition: "all 0.2s ease-in-out",
+          outline: isSelected ? `3px solid ${colorOption === "white" ? "#999" : colorOption}` : "none",
+          outlineOffset: 2,
+          "&:hover": {
+            transform: "scale(1.1)",
+          },
+        }}
+        title={colorOption}
+      />
+    );
+  })}
+</Box>
+
+
+<Typography variant="body2" sx={{ mt: 3 }}>
+  Estado:
+</Typography>
+
+<Box sx={{ display: "flex", gap: 2, mt: 1 }}>
+  {[
+    { valor: "normal", cor: "white", label: "Normal" },
+    { valor: "verde", cor: "#e6f4ea", label: "Verde" },
+    { valor: "vermelho", cor: "#fbeaea", label: "Vermelho" },
+  ].map(({ valor, cor, label }) => (
+    <Box
+      key={valor}
+      onClick={() => setEstadoCartao(valor)}
+      sx={{
+        width: 30,
+        height: 30,
+        borderRadius: "50%",
+        backgroundColor: cor,
+        border: "2px solid #999",
+        cursor: "pointer",
+        outline: estadoCartao === valor ? "3px solid #1b263b" : "none",
+        outlineOffset: 2,
+        transition: "all 0.2s ease-in-out",
+        "&:hover": {
+          transform: "scale(1.1)",
+        },
+      }}
+      title={label}
+    />
+  ))}
+</Box>
+
+
+
+
+
+
+        <Button
+  variant="contained"
+  onClick={addMatricula}
+  sx={{
+    mt: 2,
+    fontWeight: "bold",
+    py: 1.3,
+    fontSize: "1rem",
+    borderRadius: 2,
+    boxShadow: 2,
+    textTransform: "uppercase",
+    backgroundColor: "#1b263b",
+    color: "white",
+    '&:hover': { backgroundColor: "#0d1b2a" }
+  }}
+  disabled={loading}
+>
+  {loading ? "A guardar..." : "Salvar"}
+</Button>
+
+{isEditing && (
+  <Button
+    variant="contained"
+    color="error"
+    onClick={() => confirmDeleteMatricula(newMatricula)}
+    sx={{
+      mt: 1.5,
+      fontWeight: "bold",
+      py: 1.3,
+      fontSize: "1rem",
+      borderRadius: 2,
+      textTransform: "uppercase",
+      backgroundColor: "#d00000",
+      color: "white",
+      '&:hover': { backgroundColor: "#a80000" }
+    }}
+  >
+    Apagar
+  </Button>
+)}
+
+</DialogContent>
+
+
+      </Dialog>
+{/* Dialog para Listar Matrículas */}
+<Dialog open={isListOpen} onClose={() => setIsListOpen(false)} fullWidth maxWidth="sm">
+    <DialogTitle
+      sx={{
+        fontSize: "1.4rem",
+        fontWeight: "bold",
+        textAlign: "center",
+        letterSpacing: 0.5,
+        color: "#1b263b"
+      }}
+    >
+      Lista de Matrículas
+    </DialogTitle>
+  <DialogContent>
+    <Box sx={{ overflowX: "auto" }}>
+      <List sx={{ p: 0 }}>
+        {matriculas.map((m) => {
+          const isGreenHighlight = m.contexto?.includes("✅");
+          const isRedHighlight = m.contexto?.includes("⛔️");
+          return (
+              <Card
+                key={m.id}
+                sx={{
+                  mb: 2,
+                  p: 2,
+                  borderRadius: 3,
+                  boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
+                  cursor: "pointer",
+                  backgroundColor: isGreenHighlight
+                    ? "#e6f4ea"
+                    : isRedHighlight
+                    ? "#fbeaea"
+                    : "#fcfcfc",
+                  border: "1px solid #e0e0e0",
+                  transition: "all 0.2s ease-in-out",
+                  "&:hover": {
+                    boxShadow: "0 6px 16px rgba(0,0,0,0.12)",
+                    backgroundColor: isGreenHighlight
+                      ? "#d2ebd9"
+                      : isRedHighlight
+                      ? "#f4dcdc"
+                      : "#f7f7f7"
+                  }
+                }}
+                      onClick={() => {
+                        handleSelect(m);
+                        setIsListOpen(false);
+                      }}              >
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <Box sx={{ textAlign: "left" }}>
+                      <Typography variant="h6" fontWeight="bold" sx={{ fontSize: "1.1rem", color: "#1b263b", letterSpacing: 0.5 }}>
+                          {m.id.toUpperCase()}
+                        </Typography>
+                        {m.cor && (
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                        <Box
+                          sx={{
+                            width: 14,
+                            height: 14,
+                            borderRadius: "50%",
+                            backgroundColor: m.cor,
+                            border: "1px solid #999"
+                          }}
+                        />
+                    <Typography variant="caption" sx={{ color: "#444", fontStyle: "italic" }}>
+                      {m.cor.charAt(0).toUpperCase() + m.cor.slice(1)}
+                    </Typography>
+
+                      </Box>
+                    )}
+
+
+                      {m.contexto && (
+                        <Typography variant="body2" sx={{ color: "#444", mt: 0.5 }}>
+                          {m.contexto?.replace(/✅|⛔️/g, "").trim()}
+                        </Typography>
+
+                      )}
+                        {m.data && (
+                          <Typography variant="caption" sx={{ fontSize: "0.75rem", color: "#888", mt: 0.5 }}>
+                          Adicionado em: {new Date(m.data).toLocaleDateString("pt-PT", {
+                              weekday: "long",
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "2-digit"
+                            })}, às {new Date(m.data).toLocaleTimeString("pt-PT", {
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            })}
+                          </Typography>
+                        )}
+                        {m.ultima_vista && (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            display="block"
+                            sx={{ mt: 0.5 }}
+                          >
+                            Última vez visto: {new Date(m.ultima_vista).toLocaleDateString("pt-PT", {
+                              weekday: "long",
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "2-digit"
+                            })}, às {new Date(m.ultima_vista).toLocaleTimeString("pt-PT", {
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            })}
+                          </Typography>
+                        )}
+                      </Box>
+
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                    <IconButton
+                      onClick={(e) => { e.stopPropagation(); editMatricula(m); }}
+                      sx={{
+                        p: 1,
+                        transition: "all 0.2s ease-in-out",
+                        color: "#1b263b", // azul escuro
+                        "&:hover": {
+                          transform: "scale(1.15)",
+                          backgroundColor: "#f0f4f8"
+                        }
+                      }}
+                    >
+                      <Edit fontSize="small" />
+                    </IconButton>
+
+                    <IconButton
+                      onClick={(e) => { e.stopPropagation(); abrirHistorico(m.id); }}
+                      sx={{
+                        p: 1,
+                        transition: "all 0.2s ease-in-out",
+                        color: "#1b263b", // também preto/azul escuro
+                        "&:hover": {
+                          transform: "scale(1.15)",
+                          backgroundColor: "#f0f4f8"
+                        }
+                      }}
+                    >
+                      <History fontSize="small" />
+                    </IconButton>
+                  </Box>
+
+                    </Box>
+                  </Card>
+          );
+        })}
+      </List>
+    </Box>
+  </DialogContent>
+</Dialog>
+
+      {/* Dialog para Confirmar Apagar */}
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} fullWidth maxWidth="xs">
+  <DialogTitle>Queres apagar a matrícula?</DialogTitle>
+  <DialogContent>
+    <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
+      <Button
+        variant="contained"
+        color="error"
+        onClick={deleteMatricula}
+        sx={{
+          fontWeight: "bold",
+          textTransform: "uppercase",
+          px: 3,
+          py: 1.3,
+          borderRadius: 2,
+          backgroundColor: "#d00000",
+          color: "white",
+          '&:hover': {
+            backgroundColor: "#a60000"
+          }
+        }}
+      >
+        Sim
+      </Button>
+
+      <Button
+        variant="contained"
+        onClick={() => setDeleteConfirmOpen(false)}
+        sx={{
+          backgroundColor: "#0d1b2a",
+          color: "white",
+          fontWeight: "bold",
+          textTransform: "uppercase",
+          px: 3,
+          py: 1.3,
+          borderRadius: 2,
+          '&:hover': {
+            backgroundColor: "#1b263b"
+          }
+        }}
+      >
+        Não
+      </Button>
+    </Box>
+  </DialogContent>
+</Dialog>
+
+
+      {/* Dialog para ver Histórico */}
+
+      <Dialog
+        open={historicoOpen}
+        onClose={() => {
+          setHistoricoOpen(false);
+          setHistoricoAtual([]);
+          setMatriculaEmFoco(null);
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+  <DialogTitle>Histórico de visualizações - {matriculaEmFoco || ""}</DialogTitle>
+  <DialogContent>
+    {historicoAtual.length === 0 ? (
+      <Typography variant="body2" color="text.secondary">Sem histórico disponível.</Typography>
+    ) : (
+      <List>
+        {historicoAtual.map((item, index) => {
+          const latitudeNumber = Number(item.latitude);
+          const longitudeNumber = Number(item.longitude);
+          const hasCoordenadas =
+            Number.isFinite(latitudeNumber) && Number.isFinite(longitudeNumber);
+
+          let secondaryContent = "Localização não disponível";
+
+          if (hasCoordenadas) {
+            const googleMapsLink = `https://www.google.com/maps?q=${latitudeNumber},${longitudeNumber}`;
+            const addressText = item.address?.trim();
+            const linkLabel = addressText && addressText.length > 0
+              ? addressText
+              : `Ver no Google Maps (${latitudeNumber.toFixed(6)}, ${longitudeNumber.toFixed(6)})`;
+
+            secondaryContent = (
+              <Link
+                href={googleMapsLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                underline="hover"
+              >
+                {linkLabel}
+              </Link>
+            );
+          }
+
+          return (
+            <ListItem key={index}>
+              <ListItemText
+                primary={`Vista em: ${new Date(item.data).toLocaleDateString("pt-PT", {
+                  weekday: "long",
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "2-digit"
+                })}, às ${new Date(item.data).toLocaleTimeString("pt-PT", {
+                  hour: "2-digit",
+                  minute: "2-digit"
+                })}`}
+                secondary={secondaryContent}
+              />
+            </ListItem>
+          );
+        })}
+      </List>
+    )}
+  </DialogContent>
+</Dialog>
+
+
+      {/* Snackbar de sucesso - matrícula apagada */}
+      <Snackbar
+        open={deleteToast}
+        autoHideDuration={3000}
+        onClose={() => setDeleteToast(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert onClose={() => setDeleteToast(false)} severity="success" sx={{ width: "100%" }}>
+          Matrícula apagada com sucesso!
+        </Alert>
+      </Snackbar>
+
+      {/* Snackbar de sucesso - matrícula marcada como vista! */}
+          <Snackbar
+      open={successSeenToast}
+      autoHideDuration={3000}
+      onClose={() => setSuccessSeenToast(false)}
+      anchorOrigin={{ vertical: "top", horizontal: "center" }}
+    >
+      <Alert onClose={() => setSuccessSeenToast(false)} severity="info" sx={{ width: "100%" }}>
+        Matrícula marcada como vista!
+      </Alert>
+    </Snackbar>
+
+      {/* Snackbar de sucesso - matrícula adicionada */}
+          <Snackbar
+        open={successAddedToast}
+        autoHideDuration={3000}
+        onClose={() => setSuccessAddedToast(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert onClose={() => setSuccessAddedToast(false)} severity="success" sx={{ width: "100%" }}>
+          Matrícula adicionada com sucesso!
+        </Alert>
+      </Snackbar>
+
+      {/* Snackbar de sucesso - matrícula editada */}
+      <Snackbar
+        open={successToast}
+        autoHideDuration={3000}
+        onClose={() => {
+          setSuccessToast(false);
+          setIsEditing(false);
+        }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert onClose={() => setSuccessToast(false)} severity="success" sx={{ width: "100%" }}>
+          Matrícula editada com sucesso!
+        </Alert>
+      </Snackbar>
 
       {/* Snackbar para alertar matrícula duplicada */}
       <Snackbar
@@ -245,164 +1593,20 @@ function MatriculaSearch({ handleLogout }) {
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <Alert onClose={() => setAlertOpen(false)} severity="warning" sx={{ width: "100%" }}>
-           Esta matrícula já existe!
+          Esta matrícula já existe!
         </Alert>
       </Snackbar>
 
-      {/* Campo de Pesquisa */}
-      <TextField
-        label="Procurar..."
-        variant="outlined"
-        fullWidth
-        value={search}
-        onChange={(e) => {
-          setSearch(e.target.value.trim());
-          setSelected(null);
-        }}
-        sx={{ mb: 2 }}
-      />
-
-      {/* Lista de Resultados da Pesquisa */}
-      {filtered.length > 0 && (
-        <List sx={{ border: "1px solid #ccc", borderRadius: 2, maxHeight: 200, overflowY: "auto", width: "100%" }}>
-          {filtered.map((m) => (
-            <ListItem key={m.id} disablePadding secondaryAction={
-              <IconButton edge="end" color="primary" onClick={() => openEditDialog(m)}>
-                <Edit />
-              </IconButton>
-            }>
-              <ListItemButton onClick={() => handleSelect(m)}>
-                <ListItemText primary={m.id} />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-      )}
-
-      {/* Cartão de Detalhes */}
-      {selected && (
-        <Card sx={{ mt: 4, textAlign: "center", boxShadow: 3, borderRadius: 2 }}>
-          <CardContent>
-            <Typography variant="h6" fontWeight="bold">{selected.id}</Typography>
-            <Typography variant="body1" sx={{ mt: 1 }}>{selected.contexto}</Typography>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Botões de Ação */}
-      <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2, flexWrap: "wrap" }}>
-        <Button variant="contained" startIcon={<Add />} onClick={() => setIsDialogOpen(true)}>
-          Adicionar
-        </Button>
-        <Button variant="contained" color="secondary" startIcon={<ListIcon />} onClick={listarTodas}>
-          Listar Todas
-        </Button>
-        <Button variant="outlined" color="error" onClick={handleLogout} sx={{ position: "absolute", top: 10, right: 10 }}>
-         Sair
-        </Button>
+      {/* Footer */}
+      <Box sx={{ mt: 4, textAlign: "center", fontSize: "0.8rem", color: "text.secondary" }}>
+        © Carlos Santos · versão 2.0
       </Box>
-
-      {/* Dialog Adicionar */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Editar Matrícula</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Nova Matrícula"
-            fullWidth
-
-            value={editId}
-            onChange={(e) => setEditId(e.target.value)}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            label="Observações"
-            fullWidth
-            value={editContexto}
-            onChange={(e) => setEditContexto(e.target.value)}
-          />
-          <Button variant="contained" onClick={saveEdit} sx={{ mt: 2, width: "100%" }}>
-            Guardar
-          </Button>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog para Listar Matrículas */}
-      <Dialog open={isListOpen} onClose={() => setIsListOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Lista de Matrículas</DialogTitle>
-        <DialogContent>
-          <Box sx={{ overflowX: "auto" }}>
-            <List>
-              {matriculas.map((m) => (
-                <ListItem key={m.id} secondaryAction={
-                  <IconButton edge="end" color="error" onClick={() => confirmDeleteMatricula(m.id)}>
-                    <Delete />
-                  </IconButton>
-                }>
-                  <ListItemText primary={m.id} secondary={m.contexto} />
-                </ListItem>
-              ))}
-            </List>
-          </Box>
-        </DialogContent>
-      </Dialog>
-
-
-
-          {/* Dialog para Confirmar Apagar */}
-          <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Queres apagar a matrícula?</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
-            <Button variant="contained" color="error" onClick={deleteMatricula}>Sim</Button>
-            <Button variant="contained" onClick={() => setDeleteConfirmOpen(false)}>Não</Button>
-          </Box>
-        </DialogContent>
-      </Dialog>
-
-          {/* Dialog para Editar */}
-   <Dialog open={isEditOpen} onClose={() => setIsEditOpen(false)} fullWidth maxWidth="sm">
-  <DialogTitle>Editar Matrícula</DialogTitle>
-  <DialogContent>
-    <TextField
-      label="Nova Matrícula"
-      fullWidth
-      value={editMatricula}
-      onChange={(e) => setEditMatricula(e.target.value)}
-      sx={{ mb: 2 }}
-    />
-    <TextField
-      label="Novo Contexto"
-      fullWidth
-      value={editContexto}
-      onChange={(e) => setEditContexto(e.target.value)}
-    />
-    <Button
-      variant="contained"
-      sx={{ mt: 2, width: "100%" }}
-      onClick={() => {
-        fetch(`${API_URL}/${selected.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: editMatricula, contexto: editContexto }),
-        })
-          .then((res) => {
-            if (!res.ok) throw new Error("Erro ao editar matrícula");
-            return res.json();
-          })
-          .then((data) => {
-            fetchMatriculas(); // atualiza a lista
-            setSelected(null);
-            setIsEditOpen(false);
-          })
-          .catch((err) => console.error("❌ Erro ao editar matrícula:", err));
-      }}
-    >
-      Guardar
-    </Button>
-  </DialogContent>
-</Dialog>
-
-
+            
     </Box>
-  );
+    
+  
+    </Box>
+
+);
+  
 }
