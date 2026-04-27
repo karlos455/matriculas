@@ -774,11 +774,11 @@ function MatriculaSearch({ handleLogout }) {
           setSearch("");
         }}
       >
-        Matrículas
+        Procurar
       </Typography>
 
       <Typography variant="body2" sx={{ color: "#64748b", mt: 0.5 }}>
-        Pesquisa, histórico e registo de veículos
+        Pesquisa, histórico e registo
       </Typography>
     </Box>
 
@@ -796,7 +796,6 @@ function MatriculaSearch({ handleLogout }) {
   </Box>
 
   <TextField
-    label="Procurar matrícula ou observações"
     fullWidth
     value={search}
     onChange={(e) => {
@@ -875,198 +874,386 @@ function MatriculaSearch({ handleLogout }) {
 <Card
   sx={{
     mt: 4,
-    textAlign: "center",
-    boxShadow: 3,
-    borderRadius: 3,
-    p: 2,
-    backgroundColor: isGreenHighlight
-      ? "#e6f4ea"
-      : isRedHighlight
-      ? "#fbeaea"
-      : "#fefefe",
-    border: highlightCard ? "2px solid #64b5f6" : "2px solid transparent",
-    transition: "border 0.4s ease, background-color 0.4s ease",
+    borderRadius: 4,
+    overflow: "hidden",
+    border: highlightCard ? "2px solid #60a5fa" : "1px solid #e2e8f0",
+    boxShadow: "0 16px 40px rgba(15, 23, 42, 0.10)",
+    backgroundColor: "#ffffff",
+    transition: "border 0.35s ease, box-shadow 0.35s ease",
   }}
 >
-
-
-  <CardContent>
-  <Typography variant="h5" fontWeight={700} sx={{ letterSpacing: 1, mb: 1 }}>
-  {selected.id.toUpperCase()}
-  </Typography>
-
-
-{selected.cor && (
-  <Box sx={{ display: "flex", justifyContent: "center", mt: 1 }}>
   <Box
     sx={{
-      width: 16,
-      height: 16,
-      borderRadius: "50%",
-      backgroundColor: selected.cor,
-      border: "1px solid #999"
+      height: 8,
+      backgroundColor: isGreenHighlight
+        ? "#16a34a"
+        : isRedHighlight
+        ? "#dc2626"
+        : "#0f172a",
     }}
   />
-</Box>
 
+  <CardContent sx={{ p: 3 }}>
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        gap: 2,
+        mb: 2,
+      }}
+    >
+      <Box sx={{ textAlign: "left" }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "#64748b",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+          }}
+        >
+          Matrícula
+        </Typography>
 
-)}
+        <Typography
+          variant="h3"
+          fontWeight={900}
+          sx={{
+            color: "#0f172a",
+            letterSpacing: "0.04em",
+            lineHeight: 1.05,
+            mt: 0.5,
+          }}
+        >
+          {selected.id.toUpperCase()}
+        </Typography>
+      </Box>
 
-          <Typography variant="body1" sx={{ mt: 1, fontSize: "0.95rem", color: "#333" }}>
-            {selected.contexto?.replace(/✅|⛔️/g, "").trim()}
-          </Typography>
-
-  {hasLocation && (
-    <Box sx={{ mt: 2 }}>
-      <Typography
-        variant="caption"
-        sx={{ display: "block", color: "text.secondary", mb: 1, textTransform: "none", letterSpacing: 0.5 }}
-      >
-        Localização guardada
-      </Typography>
       <Box
         sx={{
-          borderRadius: 2,
-          overflow: "hidden",
-          border: "1px solid rgba(0,0,0,0.12)",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+          px: 1.5,
+          py: 0.7,
+          borderRadius: 999,
+          fontSize: "0.8rem",
+          fontWeight: 800,
+          color: isGreenHighlight ? "#166534" : isRedHighlight ? "#991b1b" : "#334155",
+          backgroundColor: isGreenHighlight
+            ? "#dcfce7"
+            : isRedHighlight
+            ? "#fee2e2"
+            : "#e2e8f0",
+          whiteSpace: "nowrap",
         }}
       >
-        <iframe
-          title={`Mapa da matrícula ${selected.id}`}
-          src={`https://maps.google.com/maps?q=${selected.latitude},${selected.longitude}&z=16&output=embed`}
-          width="100%"
-          height="220"
-          style={{ border: 0 }}
-          loading="lazy"
-          allowFullScreen
-        />
-      </Box>
-      <Box sx={{ display: "flex", justifyContent: "center", gap: 1.5, mt: 1.5, flexWrap: "wrap" }}>
-        {googleMapsLink && (
-          <Button
-            component="a"
-            href={googleMapsLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            variant="text"
-            sx={{ textTransform: "none", fontWeight: 600 }}
-          >
-            Abrir no Google Maps
-          </Button>
-        )}
-        {appleMapsLink && (
-          <Button
-            component="a"
-            href={appleMapsLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            variant="text"
-            sx={{ textTransform: "none", fontWeight: 600 }}
-          >
-            Abrir no Apple Maps
-          </Button>
-        )}
+        {isGreenHighlight ? "Permitido" : isRedHighlight ? "Atenção" : "Normal"}
       </Box>
     </Box>
-  )}
 
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: selected.cor ? "1fr 1fr" : "1fr",
+        gap: 2,
+        mb: 2,
+      }}
+    >
+      {selected.cor && (
+        <Box
+          sx={{
+            p: 2,
+            borderRadius: 3,
+            backgroundColor: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            textAlign: "left",
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              color: "#64748b",
+              fontWeight: 700,
+              display: "block",
+              mb: 1,
+            }}
+          >
+            Cor do carro
+          </Typography>
 
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box
+              sx={{
+                width: 18,
+                height: 18,
+                borderRadius: "50%",
+                backgroundColor: selected.cor,
+                border: "1px solid #94a3b8",
+              }}
+            />
 
-    <Typography variant="caption" sx={{ display: "block", mt: 1, fontSize: "0.75rem", color: "text.secondary" }}>
-    Adicionado em:{" "}
-      {new Date(selected.data).toLocaleDateString("pt-PT", {
-        weekday: "long",
-        day: "2-digit",
-        month: "2-digit",
-        year: "2-digit",
-      })}, às{" "}
-      {new Date(selected.data).toLocaleTimeString("pt-PT", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })}
-    </Typography>
+            <Typography variant="body2" sx={{ color: "#0f172a", fontWeight: 700 }}>
+              {selected.cor.charAt(0).toUpperCase() + selected.cor.slice(1)}
+            </Typography>
+          </Box>
+        </Box>
+      )}
 
-    {selected.ultima_vista && (
-      <Typography variant="caption" sx={{ display: "block", fontSize: "0.75rem", color: "text.secondary" }}>
+      <Box
+        sx={{
+          p: 2,
+          borderRadius: 3,
+          backgroundColor: "#f8fafc",
+          border: "1px solid #e2e8f0",
+          textAlign: "left",
+        }}
+      >
+        <Typography
+          variant="caption"
+          sx={{
+            color: "#64748b",
+            fontWeight: 700,
+            display: "block",
+            mb: 1,
+          }}
+        >
+          Estado
+        </Typography>
 
-        Última vez visto:{" "}
-        {new Date(selected.ultima_vista).toLocaleDateString("pt-PT", {
-          weekday: "long",
-          day: "2-digit",
-          month: "2-digit",
-          year: "2-digit",
-        })}, às{" "}
-        {new Date(selected.ultima_vista).toLocaleTimeString("pt-PT", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })}
-      </Typography>
+        <Typography variant="body2" sx={{ color: "#0f172a", fontWeight: 700 }}>
+          {isGreenHighlight ? "Permitido" : isRedHighlight ? "Atenção" : "Normal"}
+        </Typography>
+      </Box>
+    </Box>
+
+    {selected.contexto?.replace(/✅|⛔️/g, "").trim() && (
+      <Box
+        sx={{
+          p: 2,
+          borderRadius: 3,
+          backgroundColor: "#f8fafc",
+          border: "1px solid #e2e8f0",
+          textAlign: "left",
+          mb: 2,
+        }}
+      >
+        <Typography
+          variant="caption"
+          sx={{
+            color: "#64748b",
+            fontWeight: 700,
+            display: "block",
+            mb: 0.75,
+          }}
+        >
+          Observações
+        </Typography>
+
+        <Typography
+          variant="body1"
+          sx={{
+            color: "#334155",
+            lineHeight: 1.6,
+          }}
+        >
+          {selected.contexto?.replace(/✅|⛔️/g, "").trim()}
+        </Typography>
+      </Box>
     )}
 
-    {/* Botões */}
+    {hasLocation && (
+      <Box sx={{ mt: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 1,
+            gap: 2,
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              color: "#64748b",
+              fontWeight: 700,
+            }}
+          >
+            Localização guardada
+          </Typography>
+
+          <Box sx={{ display: "flex", gap: 1 }}>
+            {googleMapsLink && (
+              <Button
+                component="a"
+                href={googleMapsLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="text"
+                size="small"
+                sx={{ textTransform: "none", fontWeight: 700 }}
+              >
+                Google Maps
+              </Button>
+            )}
+
+            {appleMapsLink && (
+              <Button
+                component="a"
+                href={appleMapsLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="text"
+                size="small"
+                sx={{ textTransform: "none", fontWeight: 700 }}
+              >
+                Apple Maps
+              </Button>
+            )}
+          </Box>
+        </Box>
+
+        <Box
+          sx={{
+            borderRadius: 3,
+            overflow: "hidden",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 4px 14px rgba(15, 23, 42, 0.08)",
+          }}
+        >
+          <iframe
+            title={`Mapa da matrícula ${selected.id}`}
+            src={`https://maps.google.com/maps?q=${selected.latitude},${selected.longitude}&z=16&output=embed`}
+            width="100%"
+            height="220"
+            style={{ border: 0 }}
+            loading="lazy"
+            allowFullScreen
+          />
+        </Box>
+      </Box>
+    )}
+
     <Box
-  sx={{
-    display: "flex",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 2,
-    mt: 2,
-  }}
->
-  {/* Visto Agora */}
-<Button
-  variant="contained"
-  sx={{
-    ...ui.successButton,
-    flex: "1 1 40%",
-    maxWidth: 180,
-  }}
-  onClick={() => marcarComoVisto(selected.id)}
->
-  Visto agora
-</Button>
+      sx={{
+        display: "grid",
+        gridTemplateColumns: selected.ultima_vista ? "1fr 1fr" : "1fr",
+        gap: 2,
+        mt: 2,
+      }}
+    >
+      <Box
+        sx={{
+          p: 2,
+          borderRadius: 3,
+          backgroundColor: "#ffffff",
+          border: "1px solid #e2e8f0",
+          textAlign: "left",
+        }}
+      >
+        <Typography
+          variant="caption"
+          sx={{ color: "#64748b", fontWeight: 700, display: "block", mb: 0.5 }}
+        >
+          Adicionado em
+        </Typography>
 
-  {/* Histórico */}
-  <Button
-    variant="contained"
-    sx={{
-      backgroundColor: "#1b263b",
-      color: "white",
-      fontWeight: "bold",
-      textTransform: "none",
-      px: 3,
-      py: 1.5,
-      borderRadius: 2,
-      flex: "1 1 40%",
-      maxWidth: 180,
-      '&:hover': { backgroundColor: "#0d1b2a" }
-    }}
-    onClick={() => abrirHistorico(selected.id)}
-  >
-    Histórico
-  </Button>
+        <Typography variant="body2" sx={{ color: "#0f172a", fontWeight: 700 }}>
+          {new Date(selected.data).toLocaleDateString("pt-PT", {
+            weekday: "long",
+            day: "2-digit",
+            month: "2-digit",
+            year: "2-digit",
+          })}
+        </Typography>
 
-  {/* Editar - linha completa */}
-  <Button
-    variant="contained"
-    sx={{
-      backgroundColor: "#1b263b",
-      color: "white",
-      fontWeight: "bold",
-      textTransform: "none",
-      px: 3,
-      py: 1.5,
-      borderRadius: 2,
-      width: "100%",
-      '&:hover': { backgroundColor: "#0d1b2a" }
-    }}
-    onClick={() => editMatricula(selected)}
-  >
-    Editar
-  </Button>
-</Box>
+        <Typography variant="caption" sx={{ color: "#64748b" }}>
+          às{" "}
+          {new Date(selected.data).toLocaleTimeString("pt-PT", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </Typography>
+      </Box>
 
+      {selected.ultima_vista && (
+        <Box
+          sx={{
+            p: 2,
+            borderRadius: 3,
+            backgroundColor: "#ffffff",
+            border: "1px solid #e2e8f0",
+            textAlign: "left",
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{ color: "#64748b", fontWeight: 700, display: "block", mb: 0.5 }}
+          >
+            Última vez visto
+          </Typography>
+
+          <Typography variant="body2" sx={{ color: "#0f172a", fontWeight: 700 }}>
+            {new Date(selected.ultima_vista).toLocaleDateString("pt-PT", {
+              weekday: "long",
+              day: "2-digit",
+              month: "2-digit",
+              year: "2-digit",
+            })}
+          </Typography>
+
+          <Typography variant="caption" sx={{ color: "#64748b" }}>
+            às{" "}
+            {new Date(selected.ultima_vista).toLocaleTimeString("pt-PT", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Typography>
+        </Box>
+      )}
+    </Box>
+
+    <Box
+      sx={{
+        display: "flex",
+        flexWrap: "wrap",
+        justifyContent: "center",
+        gap: 1.5,
+        mt: 3,
+      }}
+    >
+      <Button
+        variant="contained"
+        sx={{
+          ...ui.successButton,
+          flex: "1 1 160px",
+        }}
+        onClick={() => marcarComoVisto(selected.id)}
+      >
+        Visto agora
+      </Button>
+
+      <Button
+        variant="outlined"
+        sx={{
+          ...ui.secondaryButton,
+          flex: "1 1 160px",
+        }}
+        onClick={() => abrirHistorico(selected.id)}
+      >
+        Histórico
+      </Button>
+
+      <Button
+        variant="contained"
+        sx={{
+          ...ui.primaryButton,
+          flex: "1 1 100%",
+        }}
+        onClick={() => editMatricula(selected)}
+      >
+        Editar
+      </Button>
+    </Box>
   </CardContent>
 </Card>
 
