@@ -440,8 +440,8 @@ app.get("/matriculas/stats/summary", async (req, res) => {
 
 
 // Estatísticas: matrículas mais vistas
-app.get("/stats/matriculas/mais-vistas", async (req, res) => {
-  try {
+app.get("/matriculas/stats/mais-vistas", async (req, res) => {
+    try {
     const result = await pool.query(`
       SELECT
         m.id,

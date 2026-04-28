@@ -483,8 +483,7 @@ function MatriculaSearch({ handleLogout }) {
   setStatsLoading(true);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/stats/matriculas/mais-vistas`);
-
+const response = await fetch(`${API_URL}/stats/mais-vistas`);
     if (!response.ok) {
       throw new Error("Erro ao carregar matrículas mais vistas");
     }
