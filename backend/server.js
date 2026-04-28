@@ -434,16 +434,43 @@ app.post("/matriculas", async (req, res) => {
 });
 
 
-// 🟢 Apagar uma matrícula
+// 🟢 Apagar uma matrícula e a respetiva foto
 app.delete("/matriculas/:id", async (req, res) => {
   try {
-    const { id } = req.params;
-    const result = await pool.query("DELETE FROM matriculas WHERE id = $1", [id]);
+    const id = req.params.id.toLowerCase();
+
+    const existingResult = await pool.query(
+      "SELECT foto_url FROM matriculas WHERE LOWER(id) = $1",
+      [id]
+    );
+
+    if (existingResult.rowCount === 0) {
+      return res.status(404).json({ error: "Matrícula não encontrada" });
+    }
+
+    const fotoUrl = existingResult.rows[0]?.foto_url;
+
+    const result = await pool.query(
+      "DELETE FROM matriculas WHERE LOWER(id) = $1",
+      [id]
+    );
 
     if (result.rowCount === 0) {
       return res.status(404).json({ error: "Matrícula não encontrada" });
     }
-    console.log(`[MATRICULAS] Apagada ${id.toLowerCase()}`);
+
+    if (fotoUrl) {
+      const filename = path.basename(fotoUrl);
+      const filePath = path.join(MATRICULAS_UPLOADS_DIR, filename);
+
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log(`[MATRICULAS] Foto apagada: ${filePath}`);
+      }
+    }
+
+    console.log(`[MATRICULAS] Apagada ${id}`);
+
     res.json({ message: "Matrícula apagada com sucesso" });
   } catch (error) {
     console.error("Erro ao apagar matrícula:", error);
