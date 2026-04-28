@@ -4,7 +4,7 @@ import {
   List, ListItem, ListItemButton, ListItemText, Typography, Box,
   IconButton, Snackbar, Alert, Link, MenuItem
 } from "@mui/material";
-import { Add, List as ListIcon, BarChart } from "@mui/icons-material";
+import { Add, List as ListIcon, BarChart, PhotoCamera } from "@mui/icons-material";
 import { Edit } from "@mui/icons-material";
 import { Grow } from "@mui/material";
 import { History } from "@mui/icons-material";
@@ -917,6 +917,9 @@ const filteredMatriculasByStats = matriculas.filter((m) => {
     case "com_localizacao":
       return hasLocation;
 
+    case "com_foto":
+      return Boolean(m.foto_url);
+
     case "nunca_vistas":
       return !m.ultima_vista;
 
@@ -967,11 +970,15 @@ const stats = {
 
   atencao: matriculas.filter((m) => m.contexto?.includes("⛔️")).length,
 
-  comLocalizacao: matriculas.filter((m) => {
-    const lat = Number(m.latitude);
-    const lon = Number(m.longitude);
-    return Number.isFinite(lat) && Number.isFinite(lon);
-  }).length,
+    comLocalizacao: matriculas.filter((m) => {
+      const lat = Number(m.latitude);
+      const lon = Number(m.longitude);
+      return Number.isFinite(lat) && Number.isFinite(lon);
+    }).length,
+
+comFoto: matriculas.filter((m) => Boolean(m.foto_url)).length,
+
+nuncaVistas: matriculas.filter((m) => !m.ultima_vista).length,
 
   nuncaVistas: matriculas.filter((m) => !m.ultima_vista).length,
 };
@@ -2153,37 +2160,57 @@ const mostRecentSeen = [...matriculas]
                         )}
                       </Box>
 
-                      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                    <IconButton
-                      onClick={(e) => { e.stopPropagation(); editMatricula(m); }}
-                      sx={{
-                        p: 1,
-                        transition: "all 0.2s ease-in-out",
-                        color: "#1b263b", // azul escuro
-                        "&:hover": {
-                          transform: "scale(1.15)",
-                          backgroundColor: "#f0f4f8"
-                        }
-                      }}
-                    >
-                      <Edit fontSize="small" />
-                    </IconButton>
+<Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+  <IconButton
+    onClick={(e) => { e.stopPropagation(); editMatricula(m); }}
+    sx={{
+      p: 1,
+      transition: "all 0.2s ease-in-out",
+      color: "#1b263b",
+      "&:hover": {
+        transform: "scale(1.15)",
+        backgroundColor: "#f0f4f8"
+      }
+    }}
+  >
+    <Edit fontSize="small" />
+  </IconButton>
 
-                    <IconButton
-                      onClick={(e) => { e.stopPropagation(); abrirHistorico(m.id); }}
-                      sx={{
-                        p: 1,
-                        transition: "all 0.2s ease-in-out",
-                        color: "#1b263b", // também preto/azul escuro
-                        "&:hover": {
-                          transform: "scale(1.15)",
-                          backgroundColor: "#f0f4f8"
-                        }
-                      }}
-                    >
-                      <History fontSize="small" />
-                    </IconButton>
-                  </Box>
+  <IconButton
+    onClick={(e) => { e.stopPropagation(); abrirHistorico(m.id); }}
+    sx={{
+      p: 1,
+      transition: "all 0.2s ease-in-out",
+      color: "#1b263b",
+      "&:hover": {
+        transform: "scale(1.15)",
+        backgroundColor: "#f0f4f8"
+      }
+    }}
+  >
+    <History fontSize="small" />
+  </IconButton>
+
+  {m.foto_url && (
+    <IconButton
+      onClick={(e) => {
+        e.stopPropagation();
+        handleSelect(m);
+      }}
+      sx={{
+        p: 1,
+        transition: "all 0.2s ease-in-out",
+        color: "#1b263b",
+        "&:hover": {
+          transform: "scale(1.15)",
+          backgroundColor: "#f0f4f8"
+        }
+      }}
+    >
+      <PhotoCamera fontSize="small" />
+    </IconButton>
+  )}
+</Box>
 
                     </Box>
                   </Card>
@@ -2729,6 +2756,7 @@ const mostRecentSeen = [...matriculas]
   { label: "Permitido", value: stats.permitido, filter: "permitido", title: "Matrículas permitidas" },
   { label: "Atenção", value: stats.atencao, filter: "atencao", title: "Matrículas em atenção" },
   { label: "Com localização", value: stats.comLocalizacao, filter: "com_localizacao", title: "Matrículas com localização" },
+  { label: "Com foto", value: stats.comFoto, filter: "com_foto", title: "Matrículas com foto" },
   { label: "Nunca vistas", value: stats.nuncaVistas, filter: "nunca_vistas", title: "Matrículas nunca vistas" },
 ].map((item) => (
 <Card
