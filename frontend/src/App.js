@@ -1498,7 +1498,6 @@ const mostRecentSeen = [...matriculas]
     type="file"
     hidden
     accept="image/*"
-    capture="environment"
     onChange={(e) => {
       const file = e.target.files?.[0];
       if (file) {
