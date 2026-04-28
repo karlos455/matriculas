@@ -485,6 +485,7 @@ function MatriculaSearch({ handleLogout }) {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoToast, setPhotoToast] = useState(false);  
   const [photoVersion, setPhotoVersion] = useState(Date.now());
+  const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
 
  const fetchMaisVistas = async () => {
   setStatsLoading(true);
@@ -696,6 +697,37 @@ const uploadFotoMatricula = async (id, file) => {
     console.error("❌ Erro ao enviar foto:", error);
   } finally {
     setPhotoUploading(false);
+  }
+};
+
+const apagarFotoMatricula = async () => {
+  if (!selected?.id) return;
+
+  const idFormatado = selected.id.toLowerCase();
+
+  try {
+    const response = await fetch(`${API_URL}/${idFormatado}/foto`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      throw new Error("Erro ao apagar foto");
+    }
+const updatedMatricula = await response.json();
+
+setSelected({
+  ...updatedMatricula,
+  foto_url: null,
+});
+
+setPhotoVersion(Date.now());
+fetchMatriculas();
+setPhotoPreviewOpen(false);
+setPhotoToast(true);
+
+
+  } catch (error) {
+    console.error("❌ Erro ao apagar foto:", error);
   }
 };
 
@@ -2951,23 +2983,43 @@ const mostRecentSeen = [...matriculas]
           </Typography>
         </Box>
 
-        <Button
-          variant="outlined"
-          onClick={() => setPhotoPreviewOpen(false)}
-          sx={{
-            textTransform: "none",
-            borderRadius: 2,
-            fontWeight: 800,
-            color: "#ffffff",
-            borderColor: "#334155",
-            "&:hover": {
-              borderColor: "#64748b",
-              backgroundColor: "#0f172a",
-            },
-          }}
-        >
-          Fechar
-        </Button>
+<Box sx={{ display: "flex", gap: 1 }}>
+  <Button
+    variant="outlined"
+    onClick={apagarFotoMatricula}
+    sx={{
+      textTransform: "none",
+      borderRadius: 2,
+      fontWeight: 800,
+      color: "#fecaca",
+      borderColor: "#7f1d1d",
+      "&:hover": {
+        borderColor: "#ef4444",
+        backgroundColor: "#450a0a",
+      },
+    }}
+  >
+    Apagar foto
+  </Button>
+
+  <Button
+    variant="outlined"
+    onClick={() => setPhotoPreviewOpen(false)}
+    sx={{
+      textTransform: "none",
+      borderRadius: 2,
+      fontWeight: 800,
+      color: "#ffffff",
+      borderColor: "#334155",
+      "&:hover": {
+        borderColor: "#64748b",
+        backgroundColor: "#0f172a",
+      },
+    }}
+  >
+    Fechar
+  </Button>
+</Box>
       </DialogTitle>
 
       <DialogContent
