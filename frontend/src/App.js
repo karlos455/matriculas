@@ -483,9 +483,11 @@ function MatriculaSearch({ handleLogout }) {
   const [listTitle, setListTitle] = useState("Lista de Matrículas");
   const [listFilter, setListFilter] = useState("all");
   const [photoUploading, setPhotoUploading] = useState(false);
-  const [photoToast, setPhotoToast] = useState(false);  
+  const [photoToast, setPhotoToast] = useState(false);
+  const [photoDeletedToast, setPhotoDeletedToast] = useState(false);
   const [photoVersion, setPhotoVersion] = useState(Date.now());
   const [photoPreviewOpen, setPhotoPreviewOpen] = useState(false);
+  const [deletePhotoConfirmOpen, setDeletePhotoConfirmOpen] = useState(false);
 
  const fetchMaisVistas = async () => {
   setStatsLoading(true);
@@ -720,11 +722,19 @@ setSelected({
   foto_url: null,
 });
 
+setMatriculas((prev) =>
+  prev.map((m) =>
+    m.id.toLowerCase() === idFormatado
+      ? { ...m, ...updatedMatricula, foto_url: null }
+      : m
+  )
+);
+
 setPhotoVersion(Date.now());
 fetchMatriculas();
+setDeletePhotoConfirmOpen(false);
 setPhotoPreviewOpen(false);
-setPhotoToast(true);
-
+setPhotoDeletedToast(true);
 
   } catch (error) {
     console.error("❌ Erro ao apagar foto:", error);
@@ -2986,7 +2996,7 @@ const mostRecentSeen = [...matriculas]
 <Box sx={{ display: "flex", gap: 1 }}>
   <Button
     variant="outlined"
-    onClick={apagarFotoMatricula}
+    onClick={() => setDeletePhotoConfirmOpen(true)}
     sx={{
       textTransform: "none",
       borderRadius: 2,
@@ -3044,6 +3054,115 @@ const mostRecentSeen = [...matriculas]
         )}
       </DialogContent>
     </Dialog>
+
+    {/* Dialog para Confirmar Apagar Foto */}
+<Dialog
+  open={deletePhotoConfirmOpen}
+  onClose={() => setDeletePhotoConfirmOpen(false)}
+  fullWidth
+  maxWidth="xs"
+  PaperProps={{
+    sx: {
+      mx: 2,
+      borderRadius: 4,
+      overflow: "hidden",
+    },
+  }}
+>
+  <DialogTitle
+    sx={{
+      px: 3,
+      py: 2.5,
+      backgroundColor: "#0f172a",
+      color: "#ffffff",
+    }}
+  >
+    <Typography variant="h6" fontWeight={800}>
+      Apagar foto?
+    </Typography>
+
+    <Typography variant="body2" sx={{ color: "#cbd5e1", mt: 0.5 }}>
+      Esta ação remove a foto associada à matrícula.
+    </Typography>
+  </DialogTitle>
+
+  <DialogContent
+    sx={{
+      backgroundColor: "#f8fafc",
+      p: 2,
+    }}
+  >
+    <Box
+      sx={{
+        p: 2,
+        borderRadius: 3,
+        backgroundColor: "#ffffff",
+        border: "1px solid #e2e8f0",
+        mb: 2,
+      }}
+    >
+      <Typography variant="body2" sx={{ color: "#334155", lineHeight: 1.5 }}>
+        Queres mesmo apagar esta foto?
+      </Typography>
+
+      {selected?.id && (
+        <Typography
+          variant="h5"
+          fontWeight={900}
+          sx={{
+            color: "#0f172a",
+            letterSpacing: "0.06em",
+            mt: 1,
+          }}
+        >
+          {selected.id.toUpperCase()}
+        </Typography>
+      )}
+    </Box>
+
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+      <Button
+        variant="contained"
+        color="error"
+        fullWidth
+        onClick={apagarFotoMatricula}
+        sx={{
+          py: 1.3,
+          fontWeight: 800,
+          textTransform: "none",
+          borderRadius: 2,
+          backgroundColor: "#dc2626",
+          "&:hover": {
+            backgroundColor: "#b91c1c",
+          },
+        }}
+      >
+        Sim, apagar foto
+      </Button>
+
+      <Button
+        variant="outlined"
+        fullWidth
+        onClick={() => setDeletePhotoConfirmOpen(false)}
+        sx={{
+          py: 1.3,
+          fontWeight: 800,
+          textTransform: "none",
+          borderRadius: 2,
+          borderColor: "#cbd5e1",
+          color: "#0f172a",
+          backgroundColor: "#ffffff",
+          "&:hover": {
+            backgroundColor: "#f1f5f9",
+            borderColor: "#94a3b8",
+          },
+        }}
+      >
+        Cancelar
+      </Button>
+    </Box>
+  </DialogContent>
+</Dialog>
 
       {/* Snackbar de sucesso - matrícula apagada */}
       <Snackbar
@@ -3118,6 +3237,18 @@ const mostRecentSeen = [...matriculas]
           Esta matrícula já existe!
         </Alert>
       </Snackbar>
+
+
+      <Snackbar
+  open={photoDeletedToast}
+  autoHideDuration={3000}
+  onClose={() => setPhotoDeletedToast(false)}
+  anchorOrigin={{ vertical: "top", horizontal: "center" }}
+>
+  <Alert onClose={() => setPhotoDeletedToast(false)} severity="success" sx={{ width: "100%" }}>
+    Foto apagada com sucesso!
+  </Alert>
+</Snackbar>
 
       {/* Footer */}
       <Box sx={{ mt: 4, textAlign: "center", fontSize: "0.8rem", color: "text.secondary" }}>
