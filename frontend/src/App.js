@@ -484,6 +484,7 @@ function MatriculaSearch({ handleLogout }) {
   const [listFilter, setListFilter] = useState("all");
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoToast, setPhotoToast] = useState(false);  
+  const [photoVersion, setPhotoVersion] = useState(Date.now());
 
  const fetchMaisVistas = async () => {
   setStatsLoading(true);
@@ -688,6 +689,7 @@ const uploadFotoMatricula = async (id, file) => {
     const updatedMatricula = await response.json();
 
     setSelected(updatedMatricula);
+    setPhotoVersion(Date.now());
     fetchMatriculas();
     setPhotoToast(true);
   } catch (error) {
@@ -1092,17 +1094,17 @@ const mostRecentSeen = [...matriculas]
       backgroundColor: "#f8fafc",
     }}
   >
-    <Box
-      component="img"
-      src={`${API_BASE_URL}${selected.foto_url}?v=${selected.ultima_vista || selected.data}`}
-      alt={`Foto da matrícula ${selected.id}`}
-      sx={{
-        width: "100%",
-        display: "block",
-        maxHeight: 320,
-        objectFit: "cover",
-      }}
-    />
+          <Box
+            component="img"
+            src={`${API_BASE_URL}${selected.foto_url}?v=${photoVersion}`}
+            alt={`Foto da matrícula ${selected.id}`}
+            sx={{
+              width: "100%",
+              display: "block",
+              maxHeight: 320,
+              objectFit: "cover",
+            }}
+          />
   </Box>
 )}
     <Box
