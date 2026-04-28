@@ -478,6 +478,8 @@ function MatriculaSearch({ handleLogout }) {
   const [statsOpen, setStatsOpen] = useState(false);
   const [maisVistas, setMaisVistas] = useState([]);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [listTitle, setListTitle] = useState("Lista de Matrículas");
+  const [listFilter, setListFilter] = useState("all");
 
  const fetchMaisVistas = async () => {
   setStatsLoading(true);
@@ -603,10 +605,12 @@ const response = await fetch(`${API_URL}/stats/mais-vistas`);
   }, []);
 
   // **Listar todas**
-  const listarTodas = () => {
-    fetchMatriculas();
-    setIsListOpen(true);
-  };
+const listarTodas = () => {
+  fetchMatriculas();
+  setListTitle("Lista de Matrículas");
+  setListFilter("all");
+  setIsListOpen(true);
+};
 
 
 
@@ -791,7 +795,56 @@ const response = await fetch(`${API_URL}/stats/mais-vistas`);
       .catch((error) => console.error("❌ Erro ao apagar matrícula:", error));
   };
 
-  const sortedMatriculas = [...matriculas].sort((a, b) => {
+  const openStatsList = (title, filter) => {
+  setListTitle(title);
+  setListFilter(filter);
+  setStatsOpen(false);
+  setIsListOpen(true);
+};
+
+const openMatriculaFromStats = (id) => {
+  const found = matriculas.find(
+    (m) => m.id.toLowerCase() === id.toLowerCase()
+  );
+
+  if (found) {
+    handleSelect(found);
+    setStatsOpen(false);
+  }
+};
+
+const todayKey = new Date().toLocaleDateString("pt-PT");
+
+const filteredMatriculasByStats = matriculas.filter((m) => {
+  const hasLocation = Number.isFinite(Number(m.latitude)) && Number.isFinite(Number(m.longitude));
+
+  switch (listFilter) {
+    case "permitido":
+      return m.contexto?.includes("✅");
+
+    case "atencao":
+      return m.contexto?.includes("⛔️");
+
+    case "normal":
+      return !m.contexto?.includes("✅") && !m.contexto?.includes("⛔️");
+
+    case "com_localizacao":
+      return hasLocation;
+
+    case "nunca_vistas":
+      return !m.ultima_vista;
+
+    case "vistas_hoje":
+      if (!m.ultima_vista) return false;
+      return new Date(m.ultima_vista).toLocaleDateString("pt-PT") === todayKey;
+
+    case "all":
+    default:
+      return true;
+  }
+});
+
+const sortedMatriculas = [...filteredMatriculasByStats].sort((a, b) => {
   switch (sortMode) {
     case "data_asc":
       return new Date(a.data) - new Date(b.data);
@@ -811,7 +864,6 @@ const response = await fetch(`${API_URL}/stats/mais-vistas`);
   }
 });
 
-const todayKey = new Date().toLocaleDateString("pt-PT");
 
 const stats = {
   total: matriculas.length,
@@ -1823,7 +1875,7 @@ const mostRecentSeen = [...matriculas]
     color: "#1b263b"
   }}
 >
-  Lista de Matrículas
+  {listTitle}
 </DialogTitle>
 
 <DialogContent>
@@ -1838,7 +1890,7 @@ const mostRecentSeen = [...matriculas]
     }}
   >
     <Typography variant="body2" sx={{ color: "#64748b" }}>
-      {matriculas.length} matrícula{matriculas.length === 1 ? "" : "s"}
+{sortedMatriculas.length} matrícula{sortedMatriculas.length === 1 ? "" : "s"}
     </Typography>
 
     <TextField
@@ -2359,23 +2411,31 @@ const mostRecentSeen = [...matriculas]
         gap: 1.5,
       }}
     >
-      {[
-        { label: "Total", value: stats.total },
-        { label: "Vistas hoje", value: stats.vistasHoje },
-        { label: "Normal", value: stats.normal },
-        { label: "Permitido", value: stats.permitido },
-        { label: "Atenção", value: stats.atencao },
-        { label: "Com localização", value: stats.comLocalizacao },
-        { label: "Nunca vistas", value: stats.nuncaVistas },
-      ].map((item) => (
-        <Card
-          key={item.label}
-          sx={{
-            borderRadius: 3,
-            border: "1px solid #e2e8f0",
-            boxShadow: "0 8px 20px rgba(15, 23, 42, 0.05)",
-          }}
-        >
+{[
+  { label: "Total", value: stats.total, filter: "all", title: "Todas as Matrículas" },
+  { label: "Vistas hoje", value: stats.vistasHoje, filter: "vistas_hoje", title: "Matrículas vistas hoje" },
+  { label: "Normal", value: stats.normal, filter: "normal", title: "Matrículas normais" },
+  { label: "Permitido", value: stats.permitido, filter: "permitido", title: "Matrículas permitidas" },
+  { label: "Atenção", value: stats.atencao, filter: "atencao", title: "Matrículas em atenção" },
+  { label: "Com localização", value: stats.comLocalizacao, filter: "com_localizacao", title: "Matrículas com localização" },
+  { label: "Nunca vistas", value: stats.nuncaVistas, filter: "nunca_vistas", title: "Matrículas nunca vistas" },
+].map((item) => (
+<Card
+  key={item.label}
+  onClick={() => openStatsList(item.title, item.filter)}
+  sx={{
+    borderRadius: 3,
+    border: "1px solid #e2e8f0",
+    boxShadow: "0 8px 20px rgba(15, 23, 42, 0.05)",
+    cursor: "pointer",
+    transition: "all 0.2s ease-in-out",
+    "&:hover": {
+      transform: "translateY(-2px)",
+      boxShadow: "0 12px 26px rgba(15, 23, 42, 0.10)",
+      borderColor: "#cbd5e1",
+    },
+  }}
+>
           <CardContent sx={{ p: 2 }}>
             <Typography
               variant="h5"
@@ -2437,22 +2497,29 @@ const mostRecentSeen = [...matriculas]
               const isRedHighlight = item.contexto?.includes("⛔️");
 
               return (
-                <Box
-                  key={item.id}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1.5,
-                    p: 1.5,
-                    borderRadius: 3,
-                    backgroundColor: isGreenHighlight
-                      ? "#f0fdf4"
-                      : isRedHighlight
-                      ? "#fef2f2"
-                      : "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                  }}
-                >
+                    <Box
+                      key={item.id}
+                      onClick={() => openMatriculaFromStats(item.id)}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        cursor: "pointer",
+                        gap: 1.5,
+                        p: 1.5,
+                        borderRadius: 3,
+                        backgroundColor: isGreenHighlight
+                          ? "#f0fdf4"
+                          : isRedHighlight
+                          ? "#fef2f2"
+                          : "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                        transition: "all 0.2s ease-in-out",
+                        "&:hover": {
+                          transform: "translateY(-1px)",
+                          boxShadow: "0 8px 18px rgba(15, 23, 42, 0.08)",
+                        },
+                      }}
+                    >
                   <Box
                     sx={{
                       width: 34,
