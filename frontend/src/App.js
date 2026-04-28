@@ -482,6 +482,8 @@ function MatriculaSearch({ handleLogout }) {
   const [statsLoading, setStatsLoading] = useState(false);
   const [listTitle, setListTitle] = useState("Lista de Matrículas");
   const [listFilter, setListFilter] = useState("all");
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoToast, setPhotoToast] = useState(false);  
 
  const fetchMaisVistas = async () => {
   setStatsLoading(true);
@@ -663,7 +665,37 @@ const listarTodas = () => {
     }
   };
 
+const uploadFotoMatricula = async (id, file) => {
+  if (!id || !file) return;
 
+  const idFormatado = id.toLowerCase();
+  const formData = new FormData();
+
+  formData.append("foto", file);
+
+  setPhotoUploading(true);
+
+  try {
+    const response = await fetch(`${API_URL}/${idFormatado}/foto`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error("Erro ao enviar foto");
+    }
+
+    const updatedMatricula = await response.json();
+
+    setSelected(updatedMatricula);
+    fetchMatriculas();
+    setPhotoToast(true);
+  } catch (error) {
+    console.error("❌ Erro ao enviar foto:", error);
+  } finally {
+    setPhotoUploading(false);
+  }
+};
 
   // **Adicionar matrícula**
   const addMatricula = async () => {
@@ -1049,6 +1081,30 @@ const mostRecentSeen = [...matriculas]
   />
 
   <CardContent sx={{ p: 3 }}>
+    {selected.foto_url && (
+  <Box
+    sx={{
+      mb: 2,
+      borderRadius: 3,
+      overflow: "hidden",
+      border: "1px solid #e2e8f0",
+      boxShadow: "0 8px 20px rgba(15, 23, 42, 0.08)",
+      backgroundColor: "#f8fafc",
+    }}
+  >
+    <Box
+      component="img"
+      src={`${API_BASE_URL}${selected.foto_url}?v=${selected.ultima_vista || selected.data}`}
+      alt={`Foto da matrícula ${selected.id}`}
+      sx={{
+        width: "100%",
+        display: "block",
+        maxHeight: 320,
+        objectFit: "cover",
+      }}
+    />
+  </Box>
+)}
     <Box
       sx={{
         display: "flex",
@@ -1376,6 +1432,37 @@ const mostRecentSeen = [...matriculas]
         mt: 3,
       }}
     >
+
+      <Button
+  variant="outlined"
+  component="label"
+  sx={{
+    ...ui.secondaryButton,
+    flex: "1 1 100%",
+  }}
+  disabled={photoUploading}
+>
+  {photoUploading
+    ? "A enviar foto..."
+    : selected.foto_url
+    ? "Substituir foto"
+    : "Adicionar foto"}
+
+  <input
+    type="file"
+    hidden
+    accept="image/*"
+    capture="environment"
+    onChange={(e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        uploadFotoMatricula(selected.id, file);
+      }
+      e.target.value = "";
+    }}
+  />
+</Button>
+
       <Button
         variant="contained"
         sx={{
@@ -2834,6 +2921,17 @@ const mostRecentSeen = [...matriculas]
           Matrícula apagada com sucesso!
         </Alert>
       </Snackbar>
+
+<Snackbar
+  open={photoToast}
+  autoHideDuration={3000}
+  onClose={() => setPhotoToast(false)}
+  anchorOrigin={{ vertical: "top", horizontal: "center" }}
+>
+  <Alert onClose={() => setPhotoToast(false)} severity="success" sx={{ width: "100%" }}>
+    Foto atualizada com sucesso!
+  </Alert>
+</Snackbar>
 
       {/* Snackbar de sucesso - matrícula marcada como vista! */}
           <Snackbar

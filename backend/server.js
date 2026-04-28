@@ -2,9 +2,34 @@ require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const https = require("https");
+const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
+const sharp = require("sharp");
 const { URLSearchParams } = require("url");
 const pool = require("./db");
 const app = express();
+
+const UPLOADS_DIR = path.join(__dirname, "uploads");
+const MATRICULAS_UPLOADS_DIR = path.join(UPLOADS_DIR, "matriculas");
+
+fs.mkdirSync(MATRICULAS_UPLOADS_DIR, { recursive: true });
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 8 * 1024 * 1024,
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+
+    if (!allowedTypes.includes(file.mimetype)) {
+      return cb(new Error("Formato de imagem inválido"));
+    }
+
+    cb(null, true);
+  },
+});
 
 app.set('case sensitive routing', false);
 
@@ -34,21 +59,23 @@ app.options("*", (req, res) => {
 
 
 app.use(express.json());
+app.use("/uploads", express.static(UPLOADS_DIR));
 
 
 async function initDB() {
   try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS matriculas (
-        id TEXT PRIMARY KEY,
-        contexto TEXT,
-        cor TEXT,
-        data TIMESTAMP DEFAULT NOW(),
-        ultima_vista TIMESTAMP,
-        latitude DOUBLE PRECISION,
-        longitude DOUBLE PRECISION
-      );
-    `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS matriculas (
+      id TEXT PRIMARY KEY,
+      contexto TEXT,
+      cor TEXT,
+      data TIMESTAMP DEFAULT NOW(),
+      ultima_vista TIMESTAMP,
+      latitude DOUBLE PRECISION,
+      longitude DOUBLE PRECISION,
+      foto_url TEXT
+    );
+  `);
 
     await pool.query(
       "ALTER TABLE matriculas ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION"
@@ -57,6 +84,10 @@ async function initDB() {
     await pool.query(
       "ALTER TABLE matriculas ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION"
     );
+
+    await pool.query(
+  "ALTER TABLE matriculas ADD COLUMN IF NOT EXISTS foto_url TEXT"
+  );  
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS historico_vistos (
@@ -266,6 +297,85 @@ app.delete("/matriculas/:id/historico/:historicoId", async (req, res) => {
   } catch (error) {
     console.error("Erro ao apagar entrada do histórico:", error);
     res.status(500).json({ error: "Erro ao apagar entrada do histórico" });
+  }
+});
+
+// Upload ou substituição da foto da matrícula
+app.post("/matriculas/:id/foto", upload.single("foto"), async (req, res) => {
+  try {
+    const id = req.params.id.toLowerCase();
+
+    if (!req.file) {
+      return res.status(400).json({ error: "Nenhuma foto enviada" });
+    }
+
+    const matriculaResult = await pool.query(
+      "SELECT * FROM matriculas WHERE LOWER(id) = $1",
+      [id]
+    );
+
+    if (matriculaResult.rowCount === 0) {
+      return res.status(404).json({ error: "Matrícula não encontrada" });
+    }
+
+    const filename = `${id}.jpg`;
+    const outputPath = path.join(MATRICULAS_UPLOADS_DIR, filename);
+    const fotoUrl = `/uploads/matriculas/${filename}`;
+
+    await sharp(req.file.buffer)
+      .rotate()
+      .resize({
+        width: 1200,
+        height: 1200,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .jpeg({
+        quality: 72,
+        mozjpeg: true,
+      })
+      .toFile(outputPath);
+
+    const updateResult = await pool.query(
+      "UPDATE matriculas SET foto_url = $1 WHERE LOWER(id) = $2 RETURNING *",
+      [fotoUrl, id]
+    );
+
+    console.log(`[MATRICULAS] Foto atualizada para ${id}: ${fotoUrl}`);
+
+    res.json(updateResult.rows[0]);
+  } catch (error) {
+    console.error("Erro ao guardar foto da matrícula:", error);
+    res.status(500).json({ error: "Erro ao guardar foto da matrícula" });
+  }
+});
+
+// Apagar foto da matrícula
+app.delete("/matriculas/:id/foto", async (req, res) => {
+  try {
+    const id = req.params.id.toLowerCase();
+    const filename = `${id}.jpg`;
+    const filePath = path.join(MATRICULAS_UPLOADS_DIR, filename);
+
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    const result = await pool.query(
+      "UPDATE matriculas SET foto_url = NULL WHERE LOWER(id) = $1 RETURNING *",
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Matrícula não encontrada" });
+    }
+
+    console.log(`[MATRICULAS] Foto removida de ${id}`);
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Erro ao apagar foto da matrícula:", error);
+    res.status(500).json({ error: "Erro ao apagar foto da matrícula" });
   }
 });
 
