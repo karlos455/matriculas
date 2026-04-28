@@ -462,6 +462,8 @@ function MatriculaSearch({ handleLogout }) {
   const [historicoOpen, setHistoricoOpen] = useState(false);
   const [historicoAtual, setHistoricoAtual] = useState([]);
   const [matriculaEmFoco, setMatriculaEmFoco] = useState(null);
+  const [deleteHistoricoConfirmOpen, setDeleteHistoricoConfirmOpen] = useState(false);
+  const [historicoToDelete, setHistoricoToDelete] = useState(null); 
   const [successAddedToast, setSuccessAddedToast] = useState(false);
   const [highlightCard, setHighlightCard] = useState(false);
   const hasLocation =
@@ -539,8 +541,13 @@ const response = await fetch(`${API_URL}/stats/mais-vistas`);
       })
       .catch((err) => console.error("❌ Erro ao buscar histórico:", err));
   };
+  
+  const confirmDeleteHistorico = (historicoId) => {
+  setHistoricoToDelete(historicoId);
+  setDeleteHistoricoConfirmOpen(true);
+};
 
-  const apagarEntradaHistorico = async (historicoId) => {
+const apagarEntradaHistorico = async (historicoId) => {
   if (!matriculaEmFoco || !historicoId) return;
 
   const idFormatado = matriculaEmFoco.toLowerCase();
@@ -572,6 +579,9 @@ const response = await fetch(`${API_URL}/stats/mais-vistas`);
         setSelected(updatedSelected);
       }
     }
+
+    setDeleteHistoricoConfirmOpen(false);
+    setHistoricoToDelete(null);
   } catch (error) {
     console.error("❌ Erro ao apagar entrada do histórico:", error);
   }
@@ -2336,23 +2346,23 @@ const mostRecentSeen = [...matriculas]
       Abrir no Google Maps
     </Button>
   )}
+<Button
+  variant="text"
+  fullWidth
+  onClick={() => confirmDeleteHistorico(item.id)}
+  sx={{
+    textTransform: "none",
+    borderRadius: 2,
+    fontWeight: 800,
+    color: "#dc2626",
+    "&:hover": {
+      backgroundColor: "#fee2e2",
+    },
+  }}
+>
+  Apagar esta visualização
+</Button>
 
-  <Button
-    variant="text"
-    fullWidth
-    onClick={() => apagarEntradaHistorico(item.id)}
-    sx={{
-      textTransform: "none",
-      borderRadius: 2,
-      fontWeight: 800,
-      color: "#dc2626",
-      "&:hover": {
-        backgroundColor: "#fee2e2",
-      },
-    }}
-  >
-    Apagar esta visualização
-  </Button>
 </Box>
 
 
@@ -2364,6 +2374,107 @@ const mostRecentSeen = [...matriculas]
         })}
       </Box>
     )}
+  </DialogContent>
+</Dialog>
+
+{/* Dialog para Confirmar Apagar Entrada do Histórico */}
+<Dialog
+  open={deleteHistoricoConfirmOpen}
+  onClose={() => {
+    setDeleteHistoricoConfirmOpen(false);
+    setHistoricoToDelete(null);
+  }}
+  fullWidth
+  maxWidth="xs"
+  PaperProps={{
+    sx: {
+      mx: 2,
+      borderRadius: 4,
+      overflow: "hidden",
+    },
+  }}
+>
+  <DialogTitle
+    sx={{
+      px: 3,
+      py: 2.5,
+      backgroundColor: "#0f172a",
+      color: "#ffffff",
+    }}
+  >
+    <Typography variant="h6" fontWeight={800}>
+      Apagar visualização?
+    </Typography>
+
+    <Typography variant="body2" sx={{ color: "#cbd5e1", mt: 0.5 }}>
+      Esta ação remove esta entrada do histórico.
+    </Typography>
+  </DialogTitle>
+
+  <DialogContent
+    sx={{
+      backgroundColor: "#f8fafc",
+      p: 2,
+    }}
+  >
+    <Box
+      sx={{
+        p: 2,
+        borderRadius: 3,
+        backgroundColor: "#ffffff",
+        border: "1px solid #e2e8f0",
+        mb: 2,
+      }}
+    >
+      <Typography variant="body2" sx={{ color: "#334155", lineHeight: 1.5 }}>
+        Queres mesmo apagar esta visualização do histórico?
+      </Typography>
+    </Box>
+
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+      <Button
+        variant="contained"
+        color="error"
+        fullWidth
+        onClick={() => apagarEntradaHistorico(historicoToDelete)}
+        sx={{
+          py: 1.3,
+          fontWeight: 800,
+          textTransform: "none",
+          borderRadius: 2,
+          backgroundColor: "#dc2626",
+          "&:hover": {
+            backgroundColor: "#b91c1c",
+          },
+        }}
+      >
+        Sim, apagar
+      </Button>
+
+      <Button
+        variant="outlined"
+        fullWidth
+        onClick={() => {
+          setDeleteHistoricoConfirmOpen(false);
+          setHistoricoToDelete(null);
+        }}
+        sx={{
+          py: 1.3,
+          fontWeight: 800,
+          textTransform: "none",
+          borderRadius: 2,
+          borderColor: "#cbd5e1",
+          color: "#0f172a",
+          backgroundColor: "#ffffff",
+          "&:hover": {
+            backgroundColor: "#f1f5f9",
+            borderColor: "#94a3b8",
+          },
+        }}
+      >
+        Cancelar
+      </Button>
+    </Box>
   </DialogContent>
 </Dialog>
 
@@ -2709,7 +2820,7 @@ const mostRecentSeen = [...matriculas]
 
       {/* Footer */}
       <Box sx={{ mt: 4, textAlign: "center", fontSize: "0.8rem", color: "text.secondary" }}>
-        © Carlos Santos · versão 2.0
+        © Carlos Santos · versão 2.3
       </Box>
             
     </Box>
