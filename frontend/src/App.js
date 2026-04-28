@@ -2062,48 +2062,116 @@ const mostRecentSeen = [...matriculas]
   </DialogContent>
 </Dialog>
 
-      {/* Dialog para Confirmar Apagar */}
-      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} fullWidth maxWidth="xs">
-  <DialogTitle>Queres apagar a matrícula?</DialogTitle>
-  <DialogContent>
-    <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
+{/* Dialog para Confirmar Apagar Matrícula */}
+<Dialog
+  open={deleteConfirmOpen}
+  onClose={() => {
+    setDeleteConfirmOpen(false);
+    setMatriculaToDelete(null);
+  }}
+  fullWidth
+  maxWidth="xs"
+  PaperProps={{
+    sx: {
+      mx: 2,
+      borderRadius: 4,
+      overflow: "hidden",
+    },
+  }}
+>
+  <DialogTitle
+    sx={{
+      px: 3,
+      py: 2.5,
+      backgroundColor: "#0f172a",
+      color: "#ffffff",
+    }}
+  >
+    <Typography variant="h6" fontWeight={800}>
+      Apagar matrícula?
+    </Typography>
+
+    <Typography variant="body2" sx={{ color: "#cbd5e1", mt: 0.5 }}>
+      Esta ação remove a matrícula e todo o histórico associado.
+    </Typography>
+  </DialogTitle>
+
+  <DialogContent
+    sx={{
+      backgroundColor: "#f8fafc",
+      p: 2,
+    }}
+  >
+    <Box
+      sx={{
+        p: 2,
+        borderRadius: 3,
+        backgroundColor: "#ffffff",
+        border: "1px solid #e2e8f0",
+        mb: 2,
+      }}
+    >
+      <Typography variant="body2" sx={{ color: "#334155", lineHeight: 1.5 }}>
+        Queres mesmo apagar esta matrícula?
+      </Typography>
+
+      {matriculaToDelete && (
+        <Typography
+          variant="h5"
+          fontWeight={900}
+          sx={{
+            color: "#0f172a",
+            letterSpacing: "0.06em",
+            mt: 1,
+          }}
+        >
+          {matriculaToDelete.toUpperCase()}
+        </Typography>
+      )}
+    </Box>
+
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
       <Button
         variant="contained"
         color="error"
+        fullWidth
         onClick={deleteMatricula}
         sx={{
-          fontWeight: "bold",
-          textTransform: "none",
-          px: 3,
           py: 1.3,
+          fontWeight: 800,
+          textTransform: "none",
           borderRadius: 2,
-          backgroundColor: "#d00000",
-          color: "white",
-          '&:hover': {
-            backgroundColor: "#a60000"
-          }
+          backgroundColor: "#dc2626",
+          "&:hover": {
+            backgroundColor: "#b91c1c",
+          },
         }}
       >
-        Sim
+        Sim, apagar
       </Button>
 
       <Button
-        variant="contained"
-        onClick={() => setDeleteConfirmOpen(false)}
+        variant="outlined"
+        fullWidth
+        onClick={() => {
+          setDeleteConfirmOpen(false);
+          setMatriculaToDelete(null);
+        }}
         sx={{
-          backgroundColor: "#0d1b2a",
-          color: "white",
-          fontWeight: "bold",
-          textTransform: "none",
-          px: 3,
           py: 1.3,
+          fontWeight: 800,
+          textTransform: "none",
           borderRadius: 2,
-          '&:hover': {
-            backgroundColor: "#1b263b"
-          }
+          borderColor: "#cbd5e1",
+          color: "#0f172a",
+          backgroundColor: "#ffffff",
+          "&:hover": {
+            backgroundColor: "#f1f5f9",
+            borderColor: "#94a3b8",
+          },
         }}
       >
-        Não
+        Cancelar
       </Button>
     </Box>
   </DialogContent>
