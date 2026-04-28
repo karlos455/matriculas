@@ -439,6 +439,33 @@ app.get("/matriculas/stats/summary", async (req, res) => {
 });
 
 
+// Estatísticas: matrículas mais vistas
+app.get("/stats/matriculas/mais-vistas", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        m.id,
+        m.contexto,
+        m.cor,
+        m.ultima_vista,
+        COUNT(h.id)::int AS total_vistos
+      FROM matriculas m
+      LEFT JOIN historico_vistos h
+        ON LOWER(h.matricula_id) = LOWER(m.id)
+      GROUP BY m.id, m.contexto, m.cor, m.ultima_vista
+      HAVING COUNT(h.id) > 0
+      ORDER BY total_vistos DESC, m.ultima_vista DESC
+      LIMIT 10
+    `);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Erro ao obter matrículas mais vistas:", error);
+    res.status(500).json({ error: "Erro ao obter matrículas mais vistas" });
+  }
+});
+
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Servidor a correr na porta ${PORT}`);
 });

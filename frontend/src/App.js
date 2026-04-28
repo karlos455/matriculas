@@ -12,6 +12,7 @@ import { History } from "@mui/icons-material";
 
 
 const API_URL = "https://matriculas.casadocarlos.info/matriculas";
+const API_BASE_URL = "https://matriculas.casadocarlos.info";
 
 const ui = {
   page: {
@@ -475,8 +476,28 @@ function MatriculaSearch({ handleLogout }) {
   const [estadoCartao, setEstadoCartao] = useState("normal");
   const [sortMode, setSortMode] = useState("data_desc");
   const [statsOpen, setStatsOpen] = useState(false);
+  const [maisVistas, setMaisVistas] = useState([]);
+  const [statsLoading, setStatsLoading] = useState(false);
 
-  
+ const fetchMaisVistas = async () => {
+  setStatsLoading(true);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/stats/matriculas/mais-vistas`);
+
+    if (!response.ok) {
+      throw new Error("Erro ao carregar matrículas mais vistas");
+    }
+
+    const data = await response.json();
+    setMaisVistas(Array.isArray(data) ? data : []);
+  } catch (error) {
+    console.error("❌ Erro ao carregar matrículas mais vistas:", error);
+    setMaisVistas([]);
+  } finally {
+    setStatsLoading(false);
+  }
+}; 
 
   const requestCurrentLocation = () =>
     new Promise((resolve) => {
@@ -1376,17 +1397,22 @@ const mostRecentSeen = [...matriculas]
     Listar todas
   </Button>
 
-  <Button
-    variant="outlined"
-    startIcon={<BarChart />}
-    onClick={() => setStatsOpen(true)}
-    sx={{
-      ...ui.secondaryButton,
-      width: { xs: "100%", sm: "auto" },
-    }}
-  >
-    Estatísticas
-  </Button>
+<Button
+  variant="outlined"
+  startIcon={<BarChart />}
+  onClick={() => {
+    setStatsOpen(true);
+    fetchMaisVistas();
+  }}
+  sx={{
+    ...ui.secondaryButton,
+    width: { xs: "100%", sm: "auto" },
+  }}
+>
+  Estatísticas
+</Button>
+
+
 </Box>
 
 {/* Dialog Adicionar/Editar Matrícula */}
@@ -2376,6 +2402,120 @@ const mostRecentSeen = [...matriculas]
       ))}
     </Box>
 
+     <Card
+      sx={{
+        mt: 1.5,
+        borderRadius: 3,
+        border: "1px solid #e2e8f0",
+        boxShadow: "0 8px 20px rgba(15, 23, 42, 0.05)",
+      }}
+    >
+      <CardContent sx={{ p: 2 }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "#64748b",
+            fontWeight: 800,
+            display: "block",
+            mb: 1.5,
+          }}
+        >
+          Matrículas mais vistas
+        </Typography>
+
+        {statsLoading ? (
+          <Typography variant="body2" sx={{ color: "#64748b" }}>
+            A carregar estatísticas...
+          </Typography>
+        ) : maisVistas.length === 0 ? (
+          <Typography variant="body2" sx={{ color: "#64748b" }}>
+            Ainda não há visualizações suficientes para mostrar estatísticas.
+          </Typography>
+        ) : (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            {maisVistas.slice(0, 5).map((item, index) => {
+              const isGreenHighlight = item.contexto?.includes("✅");
+              const isRedHighlight = item.contexto?.includes("⛔️");
+
+              return (
+                <Box
+                  key={item.id}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1.5,
+                    p: 1.5,
+                    borderRadius: 3,
+                    backgroundColor: isGreenHighlight
+                      ? "#f0fdf4"
+                      : isRedHighlight
+                      ? "#fef2f2"
+                      : "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: "50%",
+                      backgroundColor: index === 0 ? "#0f172a" : "#e2e8f0",
+                      color: index === 0 ? "#ffffff" : "#0f172a",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 900,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {index + 1}
+                  </Box>
+
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography
+                      variant="body1"
+                      fontWeight={900}
+                      sx={{ color: "#0f172a", letterSpacing: "0.04em" }}
+                    >
+                      {item.id.toUpperCase()}
+                    </Typography>
+
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "#64748b",
+                        display: "block",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {item.contexto?.replace(/✅|⛔️/g, "").trim() || "Sem observações"}
+                    </Typography>
+                  </Box>
+
+                  <Box
+                    sx={{
+                      px: 1.2,
+                      py: 0.6,
+                      borderRadius: 999,
+                      backgroundColor: "#e2e8f0",
+                      color: "#0f172a",
+                      fontWeight: 900,
+                      fontSize: "0.8rem",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {item.total_vistos}x
+                  </Box>
+                </Box>
+              );
+            })}
+          </Box>
+        )}
+      </CardContent>
+    </Card>
+
     <Card
       sx={{
         mt: 1.5,
@@ -2424,7 +2564,6 @@ const mostRecentSeen = [...matriculas]
         )}
       </CardContent>
     </Card>
-
     <Button
       variant="contained"
       fullWidth
