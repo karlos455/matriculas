@@ -13,6 +13,10 @@ const app = express();
 const UPLOADS_DIR = path.join(__dirname, "uploads");
 const MATRICULAS_UPLOADS_DIR = path.join(UPLOADS_DIR, "matriculas");
 
+console.log("[UPLOADS] __dirname:", __dirname);
+console.log("[UPLOADS] UPLOADS_DIR:", UPLOADS_DIR);
+console.log("[UPLOADS] MATRICULAS_UPLOADS_DIR:", MATRICULAS_UPLOADS_DIR);
+
 fs.mkdirSync(MATRICULAS_UPLOADS_DIR, { recursive: true });
 
 const upload = multer({
