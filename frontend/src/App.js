@@ -1094,17 +1094,19 @@ const mostRecentSeen = [...matriculas]
       backgroundColor: "#f8fafc",
     }}
   >
-          <Box
-            component="img"
-            src={`${API_BASE_URL}${selected.foto_url}?v=${photoVersion}`}
-            alt={`Foto da matrícula ${selected.id}`}
-            sx={{
-              width: "100%",
-              display: "block",
-              maxHeight: 320,
-              objectFit: "cover",
-            }}
-          />
+      <Box
+        component="img"
+        src={`${API_BASE_URL}${selected.foto_url}?v=${photoVersion}`}
+        alt={`Foto da matrícula ${selected.id}`}
+        onClick={() => setPhotoPreviewOpen(true)}
+        sx={{
+          width: "100%",
+          display: "block",
+          maxHeight: 320,
+          objectFit: "cover",
+          cursor: "zoom-in",
+        }}
+      />
   </Box>
 )}
     <Box
@@ -2911,6 +2913,85 @@ const mostRecentSeen = [...matriculas]
     </Button>
   </DialogContent>
 </Dialog>
+
+    {/* Dialog para ver foto em grande */}
+    <Dialog
+      open={photoPreviewOpen}
+      onClose={() => setPhotoPreviewOpen(false)}
+      fullWidth
+      maxWidth="md"
+      PaperProps={{
+        sx: {
+          mx: 1,
+          borderRadius: 4,
+          overflow: "hidden",
+          backgroundColor: "#020617",
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          px: 2,
+          py: 1.5,
+          backgroundColor: "#020617",
+          color: "#ffffff",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 2,
+        }}
+      >
+        <Box>
+          <Typography variant="h6" fontWeight={800}>
+            Foto da matrícula
+          </Typography>
+
+          <Typography variant="body2" sx={{ color: "#cbd5e1", mt: 0.25 }}>
+            {selected?.id?.toUpperCase() || ""}
+          </Typography>
+        </Box>
+
+        <Button
+          variant="outlined"
+          onClick={() => setPhotoPreviewOpen(false)}
+          sx={{
+            textTransform: "none",
+            borderRadius: 2,
+            fontWeight: 800,
+            color: "#ffffff",
+            borderColor: "#334155",
+            "&:hover": {
+              borderColor: "#64748b",
+              backgroundColor: "#0f172a",
+            },
+          }}
+        >
+          Fechar
+        </Button>
+      </DialogTitle>
+
+      <DialogContent
+        sx={{
+          p: 0,
+          backgroundColor: "#020617",
+        }}
+      >
+        {selected?.foto_url && (
+          <Box
+            component="img"
+            src={`${API_BASE_URL}${selected.foto_url}?v=${photoVersion}`}
+            alt={`Foto da matrícula ${selected.id}`}
+            sx={{
+              width: "100%",
+              maxHeight: "80vh",
+              objectFit: "contain",
+              display: "block",
+              backgroundColor: "#020617",
+            }}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
 
       {/* Snackbar de sucesso - matrícula apagada */}
       <Snackbar
